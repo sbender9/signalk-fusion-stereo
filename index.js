@@ -62,8 +62,11 @@ module.exports = function(app) {
     debug("stopped")
   }
 
-  plugin.executeCommand = function(json) {
-    sendCommand(app, deviceid, json)
+  plugin.registerWithRouter = function(router) {
+    router.post("/command", (req, res) => {
+      sendCommand(app, deviceid, req.body)
+      res.send("Executed command for plugin " + plugin.id)
+    })
   }
   
   plugin.id = "fusionstereo"
