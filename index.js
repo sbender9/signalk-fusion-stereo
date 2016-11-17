@@ -106,6 +106,11 @@ function isoDate()
   return (new Date()).toISOString()
 }
 
+function checkVolume(val)
+{
+  return typeof val !== 'undefined' ? val : 0;
+}
+
 function sendCommand(app, deviceid, command_json)
 {
   var n2k_msg = null
@@ -121,11 +126,17 @@ function sendCommand(app, deviceid, command_json)
   else if ( action == 'setAllVolume' )
   {
     volumes = command_json['value']
+
+    zone1 = checkVolume(volumes['1'])
+    zone2 = checkVolume(volumes['2'])
+    zone3 = checkVolume(volumes['3'])
+    zone4 = checkVolume(volumes['4'])
+    
     n2k_msg = util.format(format, isoDate(), default_src, deviceid,
-                          padd(volumes['1'].toString(16)),
-                          padd(volumes['2'].toString(16)),
-                          padd(volumes['3'].toString(16)),
-                          padd(volumes['4'].toString(16)))
+                          padd(zone1.toString(16)),
+                          padd(zone2.toString(16)),
+                          padd(zone3.toString(16)),
+                          padd(zone4.toString(16)))
   }
   else if ( action == 'setVolume' )
   {
