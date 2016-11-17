@@ -22,10 +22,12 @@ const util = require('util')
 const _ = require('lodash')
 
 const fusion_commands = {
-  "next": "%s,6,126720,%s,%s,6,a3,99,03,00,0b,04",
-  "prev": "%s,6,126720,%s,%s,6,a3,99,03,00,0b,06",
-  "play": "%s,6,126720,%s,%s,6,a3,99,03,00,0b,01",
-  "pause": "%s,6,126720,%s,%s,6,a3,99,03,00,0b,02",
+  "next": "%s,6,126720,%s,%s,6,a3,99,03,00,%s,04",
+  "prev": "%s,6,126720,%s,%s,6,a3,99,03,00,%s,06",
+  "SiriusXM_next": "%s,7,126720,%s,%s,8,a3,99,1e,00,%s,01,00,00",
+  "SiriusXM_prev": "%s,7,126720,%s,%s,8,a3,99,1e,00,%s,02,00,00",
+  "play": "%s,6,126720,%s,%s,6,a3,99,03,00,%s,01",
+  "pause": "%s,6,126720,%s,%s,6,a3,99,03,00,%s,02",
   "status": "%s,6,126720,%s,%s,4,a3,99,01,00",
   "mute": "%s,6,126720,%s,%s,5,a3,99,11,00,01",
   "unmute": "%s,6,126720,2,10,5,a3,99,11,00,02",
@@ -93,8 +95,9 @@ module.exports = function(app) {
 
 function padd(n, p, c)
 {
+  var pad_count = typeof p !== 'undefined' ? p : 2
   var pad_char = typeof c !== 'undefined' ? c : '0';
-  var pad = new Array(1 + p).join(pad_char);
+  var pad = new Array(1 + pad_count).join(pad_char);
   return (pad + n).slice(-pad.length);
 }
 
@@ -110,19 +113,49 @@ function sendCommand(app, deviceid, command_json)
   debug("action: " + action)
 
   var format = fusion_commands[action]
-  if ( action in ['setSource', 'setAllVolume'] )
+  if ( action == 'setSource' )
   {
     n2k_msg = util.format(format, isoDate(), default_src, deviceid,
-                          padd(dict['value'].toString(16)),
-                          padd(dict['value'].toString(16)),
-                          padd(dict['value'].toString(16)),
-                          padd(dict['value'].toString(16)))
+			  padd(command_json['value'].toString(16)))
+  }
+  else if ( action == 'setAllVolume' )
+  {
+    n2k_msg = util.format(format, isoDate(), default_src, deviceid,
+                          padd(command_json['value'].toString(16)),
+                          padd(command_json['value'].toString(16)),
+                          padd(command_json['value'].toString(16)),
+                          padd(command_json['value'].toString(16)))
   }
   else if ( action == 'setVolume' )
   {
     n2k_msg = util.format(format, isoDate(), default_src, deviceid,
-                          padd(dict['zone'].toString(16)),
-                          padd(dict['value'].toString(16)))
+                          padd(command_json['zone'].toString(16)),
+                          padd(command_json['value'].toString(16)))
+  }
+  else if ( action == 'next' || action == 'prev' || action == 'play'
+	    || action == 'pause' )
+  {
+    var cur_source_id = _.get(app.signalk.self,
+			      "entertainment.currentSource.value")
+    var sources = _.get(app.signalk.self, "entertainment.sources")
+    debug("sources: " + sources + " cur_source_id: " + cur_source_id)
+    if (typeof cur_source_id != "undefined" && typeof sources != "undefined")
+    {
+      debug("yep")
+      var source_name = sources[cur_source_id]["name"]["value"]
+
+      if ( source_name == 'SiriusXM' )
+      {
+	format = fusion_commands["SiriusXM_"+action]
+      }
+
+      if ( format )
+      {
+	n2k_msg = util.format(format,
+			      isoDate(), default_src, deviceid,
+			      padd(cur_source_id.toString(16)))
+      }
+    }
   }
   else
   {
