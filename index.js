@@ -120,11 +120,12 @@ function sendCommand(app, deviceid, command_json)
   }
   else if ( action == 'setAllVolume' )
   {
+    volumes = command_json['value']
     n2k_msg = util.format(format, isoDate(), default_src, deviceid,
-                          padd(command_json['value'].toString(16)),
-                          padd(command_json['value'].toString(16)),
-                          padd(command_json['value'].toString(16)),
-                          padd(command_json['value'].toString(16)))
+                          padd(volumes['1'].toString(16)),
+                          padd(volumes['2'].toString(16)),
+                          padd(volumes['3'].toString(16)),
+                          padd(volumes['4'].toString(16)))
   }
   else if ( action == 'setVolume' )
   {
