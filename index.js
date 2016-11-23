@@ -111,6 +111,16 @@ function checkVolume(val)
   return typeof val !== 'undefined' ? val : 0;
 }
 
+function zoneIdToNum(id)
+{
+  return padd((Number(id.substring("zone".length))-1).toString(16))
+}
+
+function sourceidToNum(id)
+{
+  return padd(Number(id.substring("source".length)).toString(16))
+}
+
 function sendCommand(app, deviceid, command_json)
 {
   var n2k_msg = null
@@ -121,16 +131,16 @@ function sendCommand(app, deviceid, command_json)
   if ( action == 'setSource' )
   {
     n2k_msg = util.format(format, isoDate(), default_src, deviceid,
-			  padd(command_json['value'].toString(16)))
+			  sourceidToNum(command_json['value']))
   }
   else if ( action == 'setAllVolume' )
   {
     volumes = command_json['value']
 
-    zone1 = checkVolume(volumes['1'])
-    zone2 = checkVolume(volumes['2'])
-    zone3 = checkVolume(volumes['3'])
-    zone4 = checkVolume(volumes['4'])
+    zone1 = checkVolume(volumes['zone1'])
+    zone2 = checkVolume(volumes['zone2'])
+    zone3 = checkVolume(volumes['zone3'])
+    zone4 = checkVolume(volumes['zone4'])
     
     n2k_msg = util.format(format, isoDate(), default_src, deviceid,
                           padd(zone1.toString(16)),
@@ -141,19 +151,20 @@ function sendCommand(app, deviceid, command_json)
   else if ( action == 'setVolume' )
   {
     n2k_msg = util.format(format, isoDate(), default_src, deviceid,
-                          padd(command_json['zone'].toString(16)),
+                          zoneIdToNum(command_json['zone']),
                           padd(command_json['value'].toString(16)))
   }
   else if ( action == 'next' || action == 'prev' || action == 'play'
 	    || action == 'pause' )
   {
     var cur_source_id = _.get(app.signalk.self,
-			      "entertainment.currentSource.value")
-    var sources = _.get(app.signalk.self, "entertainment.sources")
+			      "entertainment.fusion1.output.zone1.source.value")
+
+    cur_source_id = cur_source_id.substring('entertainment.fusion1.avsource.'.length)
+    var sources = _.get(app.signalk.self, "entertainment.fusion1.avsource")
     debug("sources: " + sources + " cur_source_id: " + cur_source_id)
     if (typeof cur_source_id != "undefined" && typeof sources != "undefined")
     {
-      debug("yep")
       var source_name = sources[cur_source_id]["name"]["value"]
 
       if ( source_name == 'SiriusXM' )
