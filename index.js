@@ -125,7 +125,7 @@ function sendCommand(app, deviceid, command_json)
 {
   var n2k_msg = null
   var action = command_json["action"]
-  debug("action: " + action)
+  debug("command: " + util.inspect(command_json, {showHidden: false, depth: null}))
 
   var format = fusion_commands[action]
   if ( action == 'setSource' )
@@ -176,7 +176,7 @@ function sendCommand(app, deviceid, command_json)
       {
 	n2k_msg = util.format(format,
 			      isoDate(), default_src, deviceid,
-			      padd(cur_source_id.toString(16)))
+			      sourceidToNum(cur_source_id))
       }
     }
   }
