@@ -52,7 +52,8 @@ module.exports = function(app) {
   plugin.start = function(props) {
     debug("starting: %s", util.inspect(props, {showHidden: false, depth: null}) )
     deviceid = props.deviceid
-    sendCommand(app, props.deviceid, { "action": "status"})
+
+    app.on("pipedProvidersStarted", get_startup_status)
     debug("started")
   };
 
@@ -90,6 +91,19 @@ module.exports = function(app) {
     }
   }
 
+  function get_startup_status(config) 
+  {
+    config.pipeElements.forEach(function(element) {
+      if ( typeof element.options != 'undefined'
+           && typeof element.options.toChildProcess != 'undefined'
+           && element.options.toChildProcess == 'nmea2000out' )
+      {
+        debug("sending status");
+        sendCommand(app, deviceid, { "action": "status"})
+      }
+    })
+  }
+
   return plugin;
 }
 
@@ -125,6 +139,8 @@ function sendCommand(app, deviceid, command_json)
 {
   var n2k_msg = null
   var action = command_json["action"]
+  var device = command_json["device"]
+  
   debug("command: " + util.inspect(command_json, {showHidden: false, depth: null}))
 
   var format = fusion_commands[action]
@@ -158,11 +174,11 @@ function sendCommand(app, deviceid, command_json)
 	    || action == 'pause' )
   {
     var cur_source_id = _.get(app.signalk.self,
-			      "entertainment.fusion1.output.zone1.source.value")
+			      device + ".output.zone1.source.value")
 
-    cur_source_id = cur_source_id.substring('entertainment.fusion1.avsource.'.length)
-    var sources = _.get(app.signalk.self, "entertainment.fusion1.avsource")
-    debug("sources: " + sources + " cur_source_id: " + cur_source_id)
+    cur_source_id = cur_source_id.substring((device + '.avsource.').length)
+    var sources = _.get(app.signalk.self, device + ".avsource")
+    debug("sources: " + util.inspect(sources, {showHidden: false, depth: null}) + " cur_source_id: " + cur_source_id)
     if (typeof cur_source_id != "undefined" && typeof sources != "undefined")
     {
       var source_name = sources[cur_source_id]["name"]["value"]
