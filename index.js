@@ -48,6 +48,8 @@ module.exports = function(app) {
   var plugin = {}
   var playing_sound = false
   var last_source = null
+  var last_volumes = null
+  var last_muted = null
   var deviceid
   var plugin_props
   
@@ -111,7 +113,7 @@ module.exports = function(app) {
           last_states.set(value.path, value.value.state)
           if ( playing_sound == false )
           {
-            switch_to_source(get_source_id_for_input(plugin_props.alarmInput))
+            setup_for_alarm()
             play_sound(value.value.state)
           }
         }
@@ -123,14 +125,90 @@ module.exports = function(app) {
     })
   }
 
+  function setup_for_alarm()
+  {
+    var cur_source_id = _.get(app.signalk.self,
+			      default_device + ".output.zone1.source.value")
+
+    if ( typeof cur_source_id == 'undefined' )
+      return
+    
+    last_source = cur_source_id.substring((default_device + '.avsource.').length)
+
+    zones = _.get(app.signalk.self, default_device + ".output")
+
+    last_muted = _.get(app.signalk.self, default_device + ".output.zone1.isMuted.value")
+
+    last_volumes = [ zones.zone1.volume.value, zones.zone2.volume.value, zones.zone3.volume.value, zones.zone4.volume.value]
+
+    switch_to_source(get_source_id_for_input(plugin_props.alarmInput))
+
+    setTimeout(function() {
+      if ( plugin_props.alarmSetVolume )
+      {
+        set_volumes([plugin_props.alarmVolume, plugin_props.alarmVolume, plugin_props.alarmVolume, plugin_props.alarmVolume])
+      }
+
+      setTimeout(function() {
+        if ( plugin_props.alarmUnMute && last_muted )
+        {
+          set_muted(true)
+        }
+      }, 1000)
+    }, 1000)
+  }
+
+  function stop_playing()
+  {
+    playing_sound = false
+
+    var cur_source_id = _.get(app.signalk.self,
+			      default_device + ".output.zone1.source.value")
+    
+    if ( typeof cur_source_id == 'undefined' )
+      return
+
+    if ( plugin_props.alarmSetVolume )
+    {
+      set_volumes(last_volumes)
+    }
+
+    setTimeout(function() {
+      if ( plugin_props.alarmUnMute && last_muted  )
+      {
+        set_muted(false)
+      }
+
+      setTimeout(function() {
+        switch_to_source(last_source)
+      }, 1000)
+    }, 1000)
+  }
+
+  function set_volumes(volumes)
+  {
+    sendCommand(app, deviceid, { "action": 'setAllVolume',
+                                 "device": default_device,
+                                 "value": {
+                                   "zone1": volumes[0],
+                                   "zone2": volumes[1],
+                                   "zone3": volumes[2],
+                                   "zone4": volumes[3] }
+                               })
+  }
+
+  function set_muted(muted)
+  {
+    action = muted ? "mute" : "unmute"
+    sendCommand(app, deviceid, { "action": action, "device": default_device })
+  }
+  
   function switch_to_source(id)
   {
     if ( id != null )
     {
-      var cur_source_id = _.get(app.signalk.self,
-			        default_device + ".output.zone1.source.value")
-      last_source = cur_source_id.substring((default_device + '.avsource.').length)
-      sendCommand(app, deviceid, { "action": 'setSource', 'value': id })
+      sendCommand(app, deviceid, { "action": 'setSource', 'value': id,
+                                   "device": default_device })
     }
   }
   
@@ -152,12 +230,6 @@ module.exports = function(app) {
     debug("unknown input: " + input)
     
     return null;
-  }
-
-  function stop_playing()
-  {
-    playing_sound = false
-    switch_to_source(last_source)
   }
 
   function play_sound(state)
@@ -193,6 +265,7 @@ module.exports = function(app) {
       }
       else
       {
+        debug("error")
         stop_playing()
       }
     });
@@ -229,6 +302,21 @@ module.exports = function(app) {
         type: "string",
         title: "Path to audio file for alarms",
         default: "builtin_alarm.mp3"
+      },
+      alarmUnMute: {
+        type: "boolean",
+        title: "Unmute on alarm",
+        default: true
+      },
+      alarmSetVolume: {
+        type: "boolean",
+        title: "Set the volume on alarm",
+        default: false
+      },
+      alarmVolume: {
+        type: "number",
+        title: "Alarm Volume (0-24)",
+        default: 12
       }
     }
   }
