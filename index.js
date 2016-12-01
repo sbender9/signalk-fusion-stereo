@@ -14,12 +14,12 @@
  */
 
 const debug = require('debug')('fusion-stereo')
-
 const Bacon = require('baconjs');
-
 const util = require('util')
-
 const _ = require('lodash')
+const child_process = require('child_process')
+const path = require('path')
+const os = require('os')
 
 const fusion_commands = {
   "next": "%s,6,126720,%s,%s,6,a3,99,03,00,%s,04",
@@ -40,28 +40,46 @@ const fusion_commands = {
 const default_src = '1'
 const everyone_dst = '255'
 
-const target_heading_path = "steering.autopilot.target.headingMagnetic.value"
-const target_wind_path = "steering.autopilot.target.windAngleApparent.value"
-const state_path = "steering.autopilot.state.value"
+const default_device = 'entertainment.device.fusion1'
 
 module.exports = function(app) {
-  var unsubscribe = undefined
+  var unsubscribes = []
+  var last_states = new Map();
   var plugin = {}
+  var playing_sound = false
+  var last_source = null
   var deviceid
+  var plugin_props
   
   plugin.start = function(props) {
     debug("starting: %s", util.inspect(props, {showHidden: false, depth: null}) )
     deviceid = props.deviceid
+    plugin_props = props
 
     app.on("pipedProvidersStarted", get_startup_status)
+
+    if ( props.enableAlarms )
+    {
+      command = {
+        context: "vessels.self",
+        subscribe: [{
+          path: "notifications.*",
+          policy: 'instant'
+        }]
+      }
+
+      app.subscriptionmanager.subscribe(command, unsubscribes, subscription_error, got_delta)
+    }
+    
     debug("started")
   };
 
   plugin.stop = function() {
     debug("stopping")
-    if (unsubscribe) {
-      unsubscribe()
-    }
+
+    unsubscribes.forEach(function(func) { func() })
+    unsubscribes = []
+    
     debug("stopped")
   }
 
@@ -70,6 +88,114 @@ module.exports = function(app) {
       sendCommand(app, deviceid, req.body)
       res.send("Executed command for plugin " + plugin.id)
     })
+  }
+
+  function subscription_error(err)
+  {
+    console.log("error: " + err)
+  }
+  
+  function got_delta(notification)
+  {
+    debug("notification: " +
+          util.inspect(notification, {showHidden: false, depth: 6}))
+    
+    notification.updates.forEach(function(update) {
+      update.values.forEach(function(value) {
+        if ( value.value != null
+             && typeof value.value.state != 'undefined' 
+             && ['alarm', 'emergency'].indexOf(value.value.state) != -1
+             && typeof value.value.method != 'undefined'
+             && value.value.method.indexOf('sound') != -1 )
+        {
+          last_states.set(value.path, value.value.state)
+          if ( playing_sound == false )
+          {
+            switch_to_source(get_source_id_for_input(plugin_props.alarmInput))
+            play_sound(value.value.state)
+          }
+        }
+        else if ( last_states.has(value.path) )
+        {
+          last_states.delete(value.path)
+        }
+      })
+    })
+  }
+
+  function switch_to_source(id)
+  {
+    if ( id != null )
+    {
+      var cur_source_id = _.get(app.signalk.self,
+			        default_device + ".output.zone1.source.value")
+      last_source = cur_source_id.substring((default_device + '.avsource.').length)
+      sendCommand(app, deviceid, { "action": 'setSource', 'value': id })
+    }
+  }
+  
+  function get_source_id_for_input(input)
+  {
+    var sources = _.get(app.signalk.self, default_device + ".avsource")
+    if ( typeof sources == 'undefined' )
+    {
+      console.log("No Source information")
+      return null;
+    }
+    
+    for ( var key in sources )
+    {
+      if ( sources[key].name.value == input )
+        return key
+    }
+
+    debug("unknown input: " + input)
+    
+    return null;
+  }
+
+  function stop_playing()
+  {
+    playing_sound = false
+    switch_to_source(last_source)
+  }
+
+  function play_sound(state)
+  {
+    debug("play")
+    playing_sound = true
+
+    if ( os.platform() == 'darwin' )
+      command = 'afplay'
+    else
+      command = 'omxplayer'
+
+    sound_file = plugin_props.alarmAudioFile
+    if ( sound_file.charAt(0) != '/' )
+    {
+      sound_file = path.join(__dirname, sound_file)
+    }
+    debug("sound_file: " + sound_file)
+    play = child_process.spawn(command, [ sound_file ])
+
+    play.on('error', (err) => {
+      stop_playing()
+      console.log("failed to play sound")
+    });
+
+    play.on('close', (code) => {
+      if ( code == 0 )
+      {
+        if ( last_states.size > 0 )
+          play_sound(state)
+        else
+          stop_playing()
+      }
+      else
+      {
+        stop_playing()
+      }
+    });
   }
   
   plugin.id = "fusionstereo"
@@ -80,13 +206,29 @@ module.exports = function(app) {
     title: "Fusion Stereo Control",
     type: "object",
     required: [
-      "deviceid"
+      "deviceid",
+      'alarmInput'
     ],
     properties: {
       deviceid: {
         type: "string",
         title: "Stereo N2K Device ID ",
         default: "10"
+      },
+      enableAlarms: {
+        type: "boolean",
+        title: "Output Alarms To Stereo",
+        default: false
+      },
+      alarmInput: {
+        type: "string",
+        title: "Input Name",
+        default: "Aux1"
+      },
+      alarmAudioFile: {
+        type: "string",
+        title: "Path to audio file for alarms",
+        default: "builtin_alarm.mp3"
       }
     }
   }
@@ -98,7 +240,6 @@ module.exports = function(app) {
            && typeof element.options.toChildProcess != 'undefined'
            && element.options.toChildProcess == 'nmea2000out' )
       {
-        debug("sending status");
         sendCommand(app, deviceid, { "action": "status"})
       }
     })
