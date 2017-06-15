@@ -275,6 +275,17 @@ module.exports = function(app) {
   plugin.name = "Fusion Stereo"
   plugin.description = "Plugin that controls a Fusion stereo"
 
+  plugin.uiSchema = {
+    "ui:order": [
+      "deviceid",
+      "enableAlarms",
+      "alarmInput",
+      "alarmAudioFile",
+      "alarmUnMute",
+      "alarmSetVolume",
+      "alarmVolume"
+    ]
+  }  
   plugin.schema = {
     title: "Fusion Stereo Control",
     type: "object",
