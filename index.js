@@ -139,7 +139,7 @@ module.exports = function(app) {
 
     last_muted = _.get(app.signalk.self, default_device + ".output.zone1.isMuted.value")
 
-    last_volumes = [ zones.zone1.volume.value, zones.zone2.volume.value, zones.zone3.volume.value, zones.zone4.volume.value]
+    last_volumes = [ zones.zone1.volume.master.value, zones.zone2.volume.master.value, zones.zone3.volume.master.value, zones.zone4.volume.master.value]
 
     switch_to_source(get_source_id_for_input(plugin_props.alarmInput))
 
