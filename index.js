@@ -13,13 +13,13 @@
  * limitations under the License.
  */
 
-const debug = require('debug')('fusion-stereo')
 const Bacon = require('baconjs');
-const util = require('util')
 const _ = require('lodash')
 const child_process = require('child_process')
 const path = require('path')
 const os = require('os')
+const util = require('util')
+
 
 const fusion_commands = {
   "next": "%s,6,126720,%s,%s,6,a3,99,03,00,%s,04",
@@ -54,11 +54,13 @@ module.exports = function(app) {
   var plugin_props
   
   plugin.start = function(props) {
-    debug("starting: %s", util.inspect(props, {showHidden: false, depth: null}) )
     deviceid = props.deviceid
     plugin_props = props
 
-    app.on("pipedProvidersStarted", get_startup_status)
+    //app.on("pipedProvidersStarted", get_startup_status)
+    app.on('nmea2000OutAvailable', () => {
+      sendCommand(app, deviceid, { "action": "status"})
+    });
 
     if ( props.enableAlarms )
     {
@@ -72,17 +74,12 @@ module.exports = function(app) {
 
       app.subscriptionmanager.subscribe(command, unsubscribes, subscription_error, got_delta)
     }
-    
-    debug("started")
+   
   };
 
   plugin.stop = function() {
-    debug("stopping")
-
     unsubscribes.forEach(function(func) { func() })
     unsubscribes = []
-    
-    debug("stopped")
   }
 
   plugin.registerWithRouter = function(router) {
@@ -99,8 +96,7 @@ module.exports = function(app) {
   
   function got_delta(notification)
   {
-    debug("notification: " +
-          util.inspect(notification, {showHidden: false, depth: 6}))
+    //app.debug("notification: %o", notification)
     
     notification.updates.forEach(function(update) {
       update.values.forEach(function(value) {
@@ -127,17 +123,16 @@ module.exports = function(app) {
 
   function setup_for_alarm()
   {
-    var cur_source_id = _.get(app.signalk.self,
-			      default_device + ".output.zone1.source.value")
+    var cur_source_id = app.getSelfPath(default_device + ".output.zone1.source.value")
 
     if ( typeof cur_source_id == 'undefined' )
       return
     
     last_source = cur_source_id.substring((default_device + '.avsource.').length)
 
-    zones = _.get(app.signalk.self, default_device + ".output")
+    zones = app.getSelfPath(default_device + ".output")
 
-    last_muted = _.get(app.signalk.self, default_device + ".output.zone1.isMuted.value")
+    last_muted = app.getSelfPath(default_device + ".output.zone1.isMuted.value")
 
     last_volumes = [ zones.zone1.volume.master.value, zones.zone2.volume.master.value, zones.zone3.volume.master.value, zones.zone4.volume.master.value]
 
@@ -162,8 +157,8 @@ module.exports = function(app) {
   {
     playing_sound = false
 
-    var cur_source_id = _.get(app.signalk.self,
-			      default_device + ".output.zone1.source.value")
+    var cur_source_id = app.getSelfPath(
+      default_device + ".output.zone1.source.value")
     
     if ( typeof cur_source_id == 'undefined' )
       return
@@ -214,7 +209,7 @@ module.exports = function(app) {
   
   function get_source_id_for_input(input)
   {
-    var sources = _.get(app.signalk.self, default_device + ".avsource")
+    var sources = app.getSelfPath(default_device + ".avsource")
     if ( typeof sources == 'undefined' )
     {
       console.log("No Source information")
@@ -227,14 +222,14 @@ module.exports = function(app) {
         return key
     }
 
-    debug("unknown input: " + input)
+    app.debug("unknown input: " + input)
     
     return null;
   }
 
   function play_sound(state)
   {
-    debug("play")
+    app.debug("play")
     playing_sound = true
 
     if ( os.platform() == 'darwin' )
@@ -247,7 +242,7 @@ module.exports = function(app) {
     {
       sound_file = path.join(__dirname, sound_file)
     }
-    debug("sound_file: " + sound_file)
+    app.debug("sound_file: " + sound_file)
     play = child_process.spawn(command, [ sound_file ])
 
     play.on('error', (err) => {
@@ -265,7 +260,7 @@ module.exports = function(app) {
       }
       else
       {
-        debug("error")
+        app.debug("error")
         stop_playing()
       }
     });
@@ -335,10 +330,19 @@ module.exports = function(app) {
   function get_startup_status(config) 
   {
     config.pipeElements.forEach(function(element) {
-      if ( typeof element.options != 'undefined'
-           && typeof element.options.toChildProcess != 'undefined'
-           && element.options.toChildProcess == 'nmea2000out' )
-      {
+      var sendit = false
+      if ( typeof element.options != 'undefined' ) {
+        if ( typeof element.options.toChildProcess != 'undefined'
+             && element.options.toChildProcess == 'nmea2000out' )
+        {
+          sendit = true
+        }
+        else if ( element.type == 'providers/simple'
+                  && _.get(element, 'options.type') === 'NMEA2000' ) {
+          sendit = true
+        }
+      }
+      if ( sendit ) {
         sendCommand(app, deviceid, { "action": "status"})
       }
     })
@@ -381,7 +385,7 @@ function sendCommand(app, deviceid, command_json)
   var action = command_json["action"]
   var device = command_json["device"]
   
-  debug("command: " + util.inspect(command_json, {showHidden: false, depth: null}))
+  app.debug("command: %j", command_json)
 
   var format = fusion_commands[action]
   if ( action == 'setSource' )
@@ -413,12 +417,12 @@ function sendCommand(app, deviceid, command_json)
   else if ( action == 'next' || action == 'prev' || action == 'play'
 	    || action == 'pause' )
   {
-    var cur_source_id = _.get(app.signalk.self,
-			      device + ".output.zone1.source.value")
+    var cur_source_id = app.getSelfPath(
+	  device + ".output.zone1.source.value")
 
     cur_source_id = cur_source_id.substring((device + '.avsource.').length)
-    var sources = _.get(app.signalk.self, device + ".avsource")
-    debug("sources: " + util.inspect(sources, {showHidden: false, depth: null}) + " cur_source_id: " + cur_source_id)
+    var sources = app.getSelfPath(device + ".avsource")
+    app.debug("sources: %j cur_source_id: %s", sources, cur_source_id)
     if (typeof cur_source_id != "undefined" && typeof sources != "undefined")
     {
       var source_name = sources[cur_source_id]["name"]["value"]
@@ -443,7 +447,7 @@ function sendCommand(app, deviceid, command_json)
 
   if ( n2k_msg )
   {
-    debug("n2k_msg: " + n2k_msg)
+    app.debug("n2k_msg: " + n2k_msg)
     app.emit('nmea2000out', n2k_msg);
   }
 }
