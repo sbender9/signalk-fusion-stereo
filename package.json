@@ -15,7 +15,7 @@
     "baconjs": "^0.7.88",
     "debug": "^3.1.0",
     "lodash": "^4.17.4",
-    "util": "^0.10.3"
+    "util": "^0.11.1"
   },
   "repository": {
     "type": "git",
