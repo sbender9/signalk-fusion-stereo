@@ -332,17 +332,13 @@ module.exports = function(app) {
   return plugin;
 }
 
-function checkVolume(val)
-{
-  return typeof val !== 'undefined' ? val : 0;
-}
-
 function sendCommand(app, deviceid, command_json)
 {
   var n2k_msg = null
   var action = command_json["action"]
+  var path = command_json["device"]
   
-  app.debug("command: %j", command_json)
+  app.debug("path: %s deviceid: %s command: %j", path, deviceid, command_json)
 
   let currentSource
   let cur_source_id
@@ -350,11 +346,13 @@ function sendCommand(app, deviceid, command_json)
   if ( action == 'next' || action == 'prev' || action == 'play'
        || action == 'pause' )
   {
-    cur_source_id = app.getSelfPath(
-	  device + ".output.zone1.source.value")
+    const sidPath = path + ".output.zone1.source.value"
+    cur_source_id = app.getSelfPath(sidPath)
 
-    cur_source_id = cur_source_id.substring((device + '.avsource.').length)
-    var sources = app.getSelfPath(device + ".avsource")
+    app.debug('sidPath: %s cur_source_id %s', sidPath, cur_source_id)
+
+    cur_source_id = cur_source_id.substring((path + '.avsource.').length)
+    var sources = app.getSelfPath(path + ".avsource")
     app.debug("sources: %j cur_source_id: %s", sources, cur_source_id)
     if (typeof cur_source_id != "undefined" && typeof sources != "undefined")
     {

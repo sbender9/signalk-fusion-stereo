@@ -19,6 +19,11 @@ const fusion_commands = {
 const default_src = '1'
 const everyone_dst = '255'
 
+function checkVolume(val)
+{
+  return typeof val !== 'undefined' ? val : 0;
+}
+
 function zoneIdToNum(id)
 {
   return padd((Number(id.substring("zone".length))-1).toString(16))
