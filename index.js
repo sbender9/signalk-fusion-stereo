@@ -144,7 +144,7 @@ module.exports = function(app) {
     if ( typeof cur_source_id == 'undefined' )
       return
 
-    if ( plugin_props.alarmSetVolume )
+    if ( plugin_props.alarmSetVolume && last_volumes )
     {
       set_volumes(last_volumes)
     }
