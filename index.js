@@ -40,22 +40,15 @@ module.exports = function(app) {
 
     //app.on("pipedProvidersStarted", get_startup_status)
     app.on('nmea2000OutAvailable', () => {
-      sendCommand(app, deviceid, { "action": "status"})
+      sendCommand(deviceid, { "action": "status"})
     });
 
     if ( props.enableAlarms )
     {
-      command = {
-        context: "vessels.self",
-        subscribe: [{
-          path: "notifications.*",
-          policy: 'instant'
-        }]
-      }
-
-      app.subscriptionmanager.subscribe(command, unsubscribes, subscription_error, got_delta)
+      subscribeToAlarms()
     }
-   
+
+    sendAlarmSettingDelta(props.enableAlarms)
   };
 
   plugin.stop = function() {
@@ -65,7 +58,7 @@ module.exports = function(app) {
 
   plugin.registerWithRouter = function(router) {
     router.post("/command", (req, res) => {
-      sendCommand(app, deviceid, req.body)
+      sendCommand(deviceid, req.body)
       res.send("Executed command for plugin " + plugin.id)
     })
   }
@@ -99,6 +92,22 @@ module.exports = function(app) {
           last_states.delete(value.path)
         }
       })
+    })
+  }
+
+  function sendAlarmSettingDelta(enabled)
+  {
+    app.handleMessage(plugin.id, {
+      updates: [
+        {
+          values: [
+            {
+              path: "entertainment.device.fusion1.outputAlarms",
+              value: enabled ? 1 : 0
+            }
+          ]
+        }
+      ]
     })
   }
 
@@ -163,28 +172,28 @@ module.exports = function(app) {
 
   function set_volumes(volumes)
   {
-    sendCommand(app, deviceid, { "action": 'setAllVolume',
-                                 "device": default_device,
-                                 "value": {
-                                   "zone1": volumes[0],
-                                   "zone2": volumes[1],
-                                   "zone3": volumes[2],
-                                   "zone4": volumes[3] }
-                               })
+    sendCommand(deviceid, { "action": 'setAllVolume',
+                            "device": default_device,
+                            "value": {
+                              "zone1": volumes[0],
+                              "zone2": volumes[1],
+                              "zone3": volumes[2],
+                              "zone4": volumes[3] }
+                          })
   }
 
   function set_muted(muted)
   {
     action = muted ? "mute" : "unmute"
-    sendCommand(app, deviceid, { "action": action, "device": default_device })
+    sendCommand(deviceid, { "action": action, "device": default_device })
   }
   
   function switch_to_source(id)
   {
     if ( id != null )
     {
-      sendCommand(app, deviceid, { "action": 'setSource', 'value': id,
-                                   "device": default_device })
+      sendCommand(deviceid, { "action": 'setSource', 'value': id,
+                              "device": default_device })
     }
   }
   
@@ -324,50 +333,96 @@ module.exports = function(app) {
         }
       }
       if ( sendit ) {
-        sendCommand(app, deviceid, { "action": "status"})
+        sendCommand(deviceid, { "action": "status"})
       }
     })
+  }
+
+  function subscribeToAlarms()
+  {
+    const command = {
+      context: "vessels.self",
+      subscribe: [{
+        path: "notifications.*",
+        policy: 'instant'
+      }]
+    }
+    
+    app.subscriptionmanager.subscribe(command, unsubscribes, subscription_error, got_delta)
+  }
+
+  function setAlarmsEnabled(enabled)
+  {
+    if ( plugin_props.enableAlarms != enabled )
+    {
+      if ( enabled )
+      {
+        subscribeToAlarms()
+      }
+      else
+      {
+        unsubscribes.forEach(function(func) { func() })
+        unsubscribes = []
+      }
+      sendAlarmSettingDelta(enabled)
+      plugin_props.enableAlarms = enabled
+      app.debug('Saving props with enableAlarms = ' + enabled)
+      app.savePluginOptions(plugin_props, err => {
+        if ( err ) {
+          app.error(err.toString())
+        }
+      })
+    }
+  }
+
+  function sendCommand(deviceid, command_json)
+  {
+    var n2k_msg = null
+    var action = command_json["action"]
+    var path = command_json["device"]
+    
+    app.debug("path: %s deviceid: %s command: %j", path, deviceid, command_json)
+
+    if ( action === 'playAlarms' )
+    {
+      setAlarmsEnabled(command_json['value'])
+    }
+    else
+    {
+      let currentSource
+      let cur_source_id
+      
+      if ( action == 'next' || action == 'prev' || action == 'play'
+           || action == 'pause' )
+      {
+        const sidPath = path + ".output.zone1.source.value"
+        cur_source_id = app.getSelfPath(sidPath)
+        
+        app.debug('sidPath: %s cur_source_id %s', sidPath, cur_source_id)
+        
+        cur_source_id = cur_source_id.substring((path + '.avsource.').length)
+        var sources = app.getSelfPath(path + ".avsource")
+        app.debug("sources: %j cur_source_id: %s", sources, cur_source_id)
+        if (typeof cur_source_id != "undefined" && typeof sources != "undefined")
+        {
+          currentSource = sources[cur_source_id]["name"]["value"]
+        }
+      }
+      
+      
+      n2k_msg = getN2KCommand(deviceid, command_json, currentSource, cur_source_id)
+      
+      if ( n2k_msg )
+      {
+        app.debug("n2k_msg: " + n2k_msg)
+        app.emit('nmea2000out', n2k_msg);
+      }
+    }
   }
 
   return plugin;
 }
 
-function sendCommand(app, deviceid, command_json)
-{
-  var n2k_msg = null
-  var action = command_json["action"]
-  var path = command_json["device"]
-  
-  app.debug("path: %s deviceid: %s command: %j", path, deviceid, command_json)
-
-  let currentSource
-  let cur_source_id
-  
-  if ( action == 'next' || action == 'prev' || action == 'play'
-       || action == 'pause' )
-  {
-    const sidPath = path + ".output.zone1.source.value"
-    cur_source_id = app.getSelfPath(sidPath)
-
-    app.debug('sidPath: %s cur_source_id %s', sidPath, cur_source_id)
-
-    cur_source_id = cur_source_id.substring((path + '.avsource.').length)
-    var sources = app.getSelfPath(path + ".avsource")
-    app.debug("sources: %j cur_source_id: %s", sources, cur_source_id)
-    if (typeof cur_source_id != "undefined" && typeof sources != "undefined")
-    {
-      currentSource = sources[cur_source_id]["name"]["value"]
-    }
-  }
-
-  n2k_msg = getN2KCommand(deviceid, command_json, currentSource, cur_source_id)
-
-  if ( n2k_msg )
-  {
-    app.debug("n2k_msg: " + n2k_msg)
-    app.emit('nmea2000out', n2k_msg);
-  }
-}
 
 
 
