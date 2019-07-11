@@ -13,6 +13,14 @@
  * limitations under the License.
  */
 
+const getBTDevices =  [
+  "%s,7,126720,1,%s,11,a3,99,09,00,0b,00,00,00,00,01,02",
+  "%s,7,126720,1,%s,11,a3,99,09,00,0b,00,00,00,00,01,02",
+  "%s,7,126720,1,%s,14,a3,99,0b,00,0b,00,00,00,00,05,00,00,00,02"
+]
+
+const endMenu = "%s,7,126720,1,%s,11,a3,99,09,00,0b,00,00,00,00,04,02"
+
 const Bacon = require('baconjs');
 const _ = require('lodash')
 const child_process = require('child_process')
@@ -33,12 +41,11 @@ module.exports = function(app) {
   var last_muted = null
   var deviceid
   var plugin_props
-  
+
   plugin.start = function(props) {
     deviceid = props.deviceid
     plugin_props = props
 
-    //app.on("pipedProvidersStarted", get_startup_status)
     app.on('nmea2000OutAvailable', () => {
       sendCommand(deviceid, { "action": "status"})
     });
@@ -49,7 +56,7 @@ module.exports = function(app) {
     }
 
     sendAlarmSettingDelta(props.enableAlarms)
-  };
+  }
 
   plugin.stop = function() {
     unsubscribes.forEach(function(func) { func() })
@@ -61,6 +68,30 @@ module.exports = function(app) {
       sendCommand(deviceid, req.body)
       res.send("Executed command for plugin " + plugin.id)
     })
+
+    router.get("/btDevices", (req, res) => {
+      let devices = []
+      let id = 0
+      const menu_items = (msg) => {
+        const fields = msg['fields']
+        if ( msg.pgn === 130820 &&
+             fields['Manufacturer Code'] === 'Fusion' &&
+             fields['Message ID'] === 'Menu Item' ) {
+          const name = fields['Text']
+
+          if ( name === 'Discoverable' ) {
+            end_menu()
+            app.removeListener('N2KAnalyzerOut', menu_items)
+            res.json(devices)
+          } else {
+            devices.push({id: id, name: name})
+            id = id + 1
+          }
+        }
+      }
+      app.on('N2KAnalyzerOut', menu_items)
+      get_bt_devices()
+   })
   }
 
   function subscription_error(err)
@@ -317,25 +348,25 @@ module.exports = function(app) {
     }
   }
 
-  function get_startup_status(config) 
+  function isoDate()
   {
-    config.pipeElements.forEach(function(element) {
-      var sendit = false
-      if ( typeof element.options != 'undefined' ) {
-        if ( typeof element.options.toChildProcess != 'undefined'
-             && element.options.toChildProcess == 'nmea2000out' )
-        {
-          sendit = true
-        }
-        else if ( element.type == 'providers/simple'
-                  && _.get(element, 'options.type') === 'NMEA2000' ) {
-          sendit = true
-        }
-      }
-      if ( sendit ) {
-        sendCommand(deviceid, { "action": "status"})
-      }
+    return (new Date()).toISOString()
+  }
+
+  function get_bt_devices()
+  {
+    getBTDevices.forEach(format => {
+      let msg = util.format(format, isoDate(), deviceid)
+      app.debug("n2k_msg: " + msg)
+      app.emit('nmea2000out', msg);
     })
+  }
+
+  function end_menu()
+  {
+    let msg = util.format(endMenu, isoDate(), deviceid)
+    app.debug("n2k_msg: " + msg)
+    app.emit('nmea2000out', msg);
   }
 
   function subscribeToAlarms()

@@ -13,7 +13,8 @@ const fusion_commands = {
   "setSource": "%s,6,126720,%s,%s,5,a3,99,02,00,%s",
   "setVolume": "%s,6,126720,%s,%s,6,a3,99,18,00,%s,%s",
   "setAllVolume": "%s,6,126720,%s,%s,8,a3,99,19,00,%s,%s,%s,%s",
-  "poweron": "%s,6,126720,%s,%s,5,a3,99,1c,00,01"
+  "poweron": "%s,6,126720,%s,%s,5,a3,99,1c,00,01",
+  "setBTDevice": "%s,7,126720,%s,%s,11,a3,99,09,00,0b,%s,00,00,00,02,02"
 }
 
 const default_src = '1'
@@ -94,6 +95,11 @@ function getN2KCommand(deviceid, command_json, currentSource, cur_source_id)
 			    isoDate(), default_src, deviceid,
 			    sourceidToNum(cur_source_id))
     }
+  }
+  else if ( action === 'setBTDevice' )
+  {
+    n2k_msg = util.format(format, isoDate(), default_src, deviceid,
+                          padd(command_json['value']).toString(16))
   }
   else
   {
