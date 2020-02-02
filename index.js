@@ -41,6 +41,7 @@ module.exports = function(app) {
   var last_muted = null
   var deviceid
   var plugin_props
+  var statusInterval
 
   plugin.start = function(props) {
     deviceid = props.deviceid
@@ -49,6 +50,10 @@ module.exports = function(app) {
     app.on('nmea2000OutAvailable', () => {
       sendCommand(deviceid, { "action": "status"})
     });
+
+    statusInterval = setInterval(() => {
+      sendCommand(deviceid, { "action": "status"})
+    }, 10000)
 
     if ( props.enableAlarms )
     {
@@ -61,6 +66,7 @@ module.exports = function(app) {
   plugin.stop = function() {
     unsubscribes.forEach(function(func) { func() })
     unsubscribes = []
+    clearInterval(statusInterval)
   }
 
   plugin.registerWithRouter = function(router) {
