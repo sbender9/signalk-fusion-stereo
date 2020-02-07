@@ -41,18 +41,48 @@ module.exports = function(app) {
   var last_muted = null
   var deviceid
   var plugin_props
-  var statusInterval
+  var statusInterval, discoverIntervsl
+  var discovered
 
+  function setProviderStatus(msg) {
+    app.debug(msg)
+    app.setProviderStatus(msg)
+  }
+
+  function setProviderError(msg) {
+    app.error(msg)
+    app.setProviderError(msg)
+  }
   plugin.start = function(props) {
-    deviceid = props.deviceid
     plugin_props = props
 
+    if ( (typeof props.autoDiscover !== 'undefined' && props.autoDiscover)
+         || (typeof props.autoDiscover === 'undefined' && typeof props.deviceid === 'undefined') ) {
+      discoverIntervsl = setInterval(() => {
+        setProviderStatus('looking for a stereo')
+        discovered = discoverStereo()
+        if ( discovered ) {
+          setProviderStatus(`Found a ${discovered.productName} with src ${discovered.src}`)
+          deviceid = discovered.src
+          clearInterval(discoverIntervsl)
+          discoverIntervsl = null
+        }
+      }, 5000)
+    } else {
+      app.debug(`using deviceid ${props.deviceid}`)
+      deviceid = props.deviceid
+    }
+    
     app.on('nmea2000OutAvailable', () => {
-      sendCommand(deviceid, { "action": "status"})
+      if ( deviceid ) {
+        sendCommand(deviceid, { "action": "status"})
+      }
     });
 
     statusInterval = setInterval(() => {
-      sendCommand(deviceid, { "action": "status"})
+      if ( deviceid ) {
+        sendCommand(deviceid, { "action": "status"})
+      }
     }, 10000)
 
     if ( props.enableAlarms )
@@ -66,7 +96,33 @@ module.exports = function(app) {
   plugin.stop = function() {
     unsubscribes.forEach(function(func) { func() })
     unsubscribes = []
-    clearInterval(statusInterval)
+    deviceid = null
+    discovered = null
+    if ( statusInterval ) {
+      clearInterval(statusInterval)
+    }
+    if ( discoverIntervsl ) {
+      clearInterval(discoverIntervsl)
+    }
+  }
+
+  function discoverStereo() {
+    const sources = app.getPath('/sources')
+    if ( sources ) {
+      const fusions = []
+      _.values(sources).forEach(v => {
+        if ( typeof v === 'object' ) {
+          _.keys(v).forEach(id => {
+            if ( v[id] && v[id].n2k && v[id].n2k.hardwareVersion && v[id].n2k.hardwareVersion.startsWith('FUSION-LINK') ) {
+              fusions.push(v[id].n2k)
+            }
+          })
+        }
+      })
+      if ( fusions.length ) {
+        return fusions[0]
+      }
+    }
   }
 
   plugin.registerWithRouter = function(router) {
@@ -299,6 +355,7 @@ module.exports = function(app) {
 
   plugin.uiSchema = {
     "ui:order": [
+      "autoDiscover",
       "deviceid",
       "enableAlarms",
       "alarmInput",
@@ -308,48 +365,69 @@ module.exports = function(app) {
       "alarmVolume"
     ]
   }  
-  plugin.schema = {
-    title: "Fusion Stereo Control",
-    type: "object",
-    required: [
-      "deviceid",
-      'alarmInput'
-    ],
-    properties: {
-      deviceid: {
-        type: "string",
-        title: "Stereo N2K Device ID ",
-        default: "10"
-      },
-      enableAlarms: {
-        type: "boolean",
-        title: "Output Alarms To Stereo",
-        default: false
-      },
-      alarmInput: {
-        type: "string",
-        title: "Input Name",
-        default: "Aux1"
-      },
-      alarmAudioFile: {
-        type: "string",
-        title: "Path to audio file for alarms",
-        default: "builtin_alarm.mp3"
-      },
-      alarmUnMute: {
-        type: "boolean",
-        title: "Unmute on alarm",
-        default: true
-      },
-      alarmSetVolume: {
-        type: "boolean",
-        title: "Set the volume on alarm",
-        default: false
-      },
-      alarmVolume: {
-        type: "number",
-        title: "Alarm Volume (0-24)",
-        default: 12
+  plugin.schema = function() {
+    let defaultId = '10'
+    let description = 'No Fusion Stereo Found'
+
+    if ( !discovered ) {
+      discovered = discoverStereo()
+    }
+
+    if ( discovered ) {
+      defaultId = discovered.src
+      description = `Found a ${discovered.productName} with src ${discovered.src}`
+    }
+    
+    return {
+      title: "Fusion Stereo Control",
+      type: "object",
+      required: [
+        "deviceid",
+        'alarmInput'
+      ],
+      properties: {
+        autoDiscover: {
+          type: 'boolean',
+          title: 'Auto Discover Stereo',
+          description,
+          default: true
+        },
+        deviceid: {
+          type: "string",
+          title: "Stereo N2K Device ID ",
+          description,
+          default: defaultId
+        },
+        enableAlarms: {
+          type: "boolean",
+          title: "Output Alarms To Stereo",
+          default: false
+        },
+        alarmInput: {
+          type: "string",
+          title: "Input Name",
+          default: "Aux1"
+        },
+        alarmAudioFile: {
+          type: "string",
+          title: "Path to audio file for alarms",
+          default: "builtin_alarm.mp3"
+        },
+        alarmUnMute: {
+          type: "boolean",
+          title: "Unmute on alarm",
+          default: true
+        },
+        alarmSetVolume: {
+          type: "boolean",
+          title: "Set the volume on alarm",
+          default: false
+        },
+        alarmVolume: {
+          type: "number",
+          title: "Alarm Volume (0-24)",
+          default: 12
+        }
       }
     }
   }
