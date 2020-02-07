@@ -20,5 +20,6 @@
   "repository": {
     "type": "git",
     "url": "https://github.com/sbender9/signalk-fusion-stereo"
-  }
+  },
+  "signalk-plugin-enabled-by-default": true
 }
