@@ -134,6 +134,7 @@ module.exports = function(app) {
     router.get("/btDevices", (req, res) => {
       let devices = []
       let id = 0
+      let found = false
       const menu_items = (msg) => {
         const fields = msg['fields']
         if ( msg.pgn === 130820 &&
@@ -142,8 +143,10 @@ module.exports = function(app) {
           const name = fields['Text']
 
           if ( name === 'Discoverable' ) {
+            app.debug('found the devices')
             end_menu()
             app.removeListener('N2KAnalyzerOut', menu_items)
+            found = true
             res.json(devices)
           } else {
             devices.push({id: id, name: name})
@@ -153,6 +156,13 @@ module.exports = function(app) {
       }
       app.on('N2KAnalyzerOut', menu_items)
       get_bt_devices()
+      setTimeout(() => {
+        if ( !found ) {
+          end_menu()
+          app.removeListener('N2KAnalyzerOut', menu_items)
+          res.status(500).send("didn't get devices")
+        }
+      }, 10000)
    })
   }
 
