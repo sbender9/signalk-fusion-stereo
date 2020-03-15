@@ -14,6 +14,7 @@ const fusion_commands = {
   "setVolume": "%s,6,126720,%s,%s,6,a3,99,18,00,%s,%s",
   "setAllVolume": "%s,6,126720,%s,%s,8,a3,99,19,00,%s,%s,%s,%s",
   "poweron": "%s,6,126720,%s,%s,5,a3,99,1c,00,01",
+  "poweroff": "%s,6,126720,%s,%s,5,a3,99,1c,00,02",
   "setBTDevice": "%s,7,126720,%s,%s,11,a3,99,09,00,0b,%s,00,00,00,02,02"
 }
 
