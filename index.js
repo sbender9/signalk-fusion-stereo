@@ -43,6 +43,9 @@ module.exports = function(app) {
   var plugin_props
   var statusInterval, discoverIntervsl
   var discovered
+  var lastBtDevices
+  var availableZones = []
+  var availableSources = []
 
   function setProviderStatus(msg) {
     app.debug(msg)
@@ -91,8 +94,67 @@ module.exports = function(app) {
     }
 
     sendAlarmSettingDelta(props.enableAlarms)
+
+    let localSubscription = {
+      context: 'vessels.self',
+      subscribe: [{
+        path: 'entertainment.device.fusion1.avsource.*',
+        period: 1000
+      },{
+        path: 'entertainment.device.fusion1.output.*',
+        period: 1000
+      }]
+    };
+
+    app.subscriptionmanager.subscribe(
+    localSubscription,
+      unsubscribes,
+      subscriptionError => {
+        app.error('Error:' + subscriptionError);
+      },
+      handleDelta
+    )
   }
 
+  function sendEnabled(props, pv) {
+    var enabled = props ? props[pv.value] : true
+    let delta = {
+      updates: [
+        {
+          values: [
+            {
+              path: pv.path.substring(0, pv.path.length-4) + 'enabled',
+              value: _.isUndefined(enabled) || enabled
+            }
+          ]
+        }
+      ]
+    }
+    app.handleMessage(plugin.id, delta)
+  }
+
+  function handleDelta(delta) {
+    delta.updates.forEach(update => {
+      update.values.forEach(pv => {
+        if(pv.path.startsWith('entertainment.device.fusion1.output.zone')) {
+          if ( pv.path.endsWith('name') ) {
+            if ( availableZones.indexOf(pv.value) === -1 ) {
+              availableZones.push(pv.value)
+            }
+            sendEnabled(plugin_props.availableZones, pv)
+          }
+        } else if ( pv.path.startsWith('entertainment.device.fusion1.avsource') ) {
+          if ( pv.path.endsWith('name') && !pv.path.endsWith('track.name') ) {
+            if ( availableSources.indexOf(pv.value) === -1 ) {
+              availableSources.push(pv.value)
+            }
+            sendEnabled(plugin_props.availableSources, pv)
+          }
+        }
+      })
+    })
+  }
+  
   plugin.stop = function() {
     unsubscribes.forEach(function(func) { func() })
     unsubscribes = []
@@ -142,11 +204,13 @@ module.exports = function(app) {
              fields['Message ID'] === 'Menu Item' ) {
           const name = fields['Text']
 
+          app.debug(`menu item: ${name}`)
           if ( name === 'Discoverable' ) {
             app.debug('found the devices')
             end_menu()
             app.removeListener('N2KAnalyzerOut', menu_items)
             found = true
+            lastBtDevices = devices
             res.json(devices)
           } else {
             devices.push({id: id, name: name})
@@ -158,11 +222,16 @@ module.exports = function(app) {
       get_bt_devices()
       setTimeout(() => {
         if ( !found ) {
+          app.debug('timed out waiting for devices')
           end_menu()
           app.removeListener('N2KAnalyzerOut', menu_items)
-          res.status(500).send("didn't get devices")
+          if ( lastBtDevices ) {
+            res.json(lastBtDevices)
+          } else {
+            res.status(500).send("didn't get devices")
+          }
         }
-      }, 10000)
+      }, 3000)
    })
   }
 
@@ -196,6 +265,9 @@ module.exports = function(app) {
         }
       })
     })
+    if ( last_states.size === 0 && playing_sound ) {
+      stop_playing()
+    }
   }
 
   function sendAlarmSettingDelta(enabled)
@@ -248,6 +320,7 @@ module.exports = function(app) {
 
   function stop_playing()
   {
+    app.debug('stop playing')
     playing_sound = false
 
     var cur_source_id = app.getSelfPath(
@@ -348,8 +421,8 @@ module.exports = function(app) {
       {
         if ( last_states.size > 0 )
           play_sound(state)
-        else
-          stop_playing()
+        //else
+          //stop_playing()
       }
       else
       {
@@ -363,18 +436,28 @@ module.exports = function(app) {
   plugin.name = "Fusion Stereo"
   plugin.description = "Plugin that controls a Fusion stereo"
 
-  plugin.uiSchema = {
-    "ui:order": [
-      "autoDiscover",
-      "deviceid",
-      "enableAlarms",
-      "alarmInput",
-      "alarmAudioFile",
-      "alarmUnMute",
-      "alarmSetVolume",
-      "alarmVolume"
-    ]
-  }  
+  plugin.uiSchema = function() {
+    let uiSchema = {
+      "ui:order": [
+        "autoDiscover",
+        "deviceid",
+        "enableAlarms",
+        "alarmInput",
+        "alarmAudioFile",
+        "alarmUnMute",
+        "alarmSetVolume",
+        "alarmVolume",
+      ]
+    }
+    if ( availableSources.length > 0 ) {
+      uiSchema['ui:order'].push('availableSources')
+    }
+    if ( availableZones.length > 0 ) {
+      uiSchema['ui:order'].push('availableZones')
+    }
+    
+    return uiSchema
+  }
   plugin.schema = function() {
     let defaultId = '10'
     let description = 'No Fusion Stereo Found'
@@ -387,8 +470,8 @@ module.exports = function(app) {
       defaultId = discovered.src
       description = `Found a ${discovered.productName} with src ${discovered.src}`
     }
-    
-    return {
+   
+    let schema = {
       title: "Fusion Stereo Control",
       type: "object",
       required: [
@@ -440,6 +523,42 @@ module.exports = function(app) {
         }
       }
     }
+    
+    if ( availableSources.length ) {
+      let as = {
+        title: "Enabled Sources",
+        type: "object",
+        properties: {
+        }
+      }
+      schema.properties.availableSources = as
+      availableSources.forEach(source => {
+        as.properties[source] = {
+          type: 'boolean',
+          title: source,
+          default: true
+        }
+      })
+    }
+
+    if ( availableZones.length ) {
+      let az = {
+        title: "Enabled Zones",
+        type: "object",
+        properties: {
+        }
+      }
+      schema.properties.availableZones = az
+
+      availableZones.forEach(zone => {
+        az.properties[zone] = {
+          type: 'boolean',
+          title: zone,
+          default: true
+        }
+      })
+    }
+    return schema
   }
 
   function isoDate()
@@ -471,8 +590,7 @@ module.exports = function(app) {
         path: "notifications.*",
         policy: 'instant'
       }]
-    }
-    
+    } 
     app.subscriptionmanager.subscribe(command, unsubscribes, subscription_error, got_delta)
   }
 
