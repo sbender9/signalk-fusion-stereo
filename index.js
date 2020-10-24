@@ -558,7 +558,6 @@ module.exports = function(app) {
         }
       })
     }
-    console.log(JSON.stringify(schema, null, 2))
     return schema
   }
 
