@@ -116,7 +116,7 @@ module.exports = function(app) {
       handleDelta
     )
 
-    registerForPuts('entertainment.device.fusion1.')
+    registerForPuts('entertainment.device.fusion1')
   }
 
   function registerForPuts(prefix) {
@@ -129,19 +129,13 @@ module.exports = function(app) {
     ZONES.forEach(zone => {
       app.registerPutHandler(
         self,
-        prefix + `output.${zone}.volume.master`,
+        prefix + `.output.${zone}.volume.master`,
         (context, path, value, cb) => {
-          sendCommand(deviceid, { action: 'setVolume', zone, value})
-          return completed
-        }
-      )
-
-      app.registerPutHandler(
-        self,
-        prefix + `output.${zone}.isMuted`,
-        (context, path, value, cb) => {
-          sendCommand(deviceid,{
-            action: value === true ? 'mute' : 'unmute'
+          sendCommand(deviceid, {
+            action: 'setVolume',
+            device: prefix,
+            zone,
+            value
           })
           return completed
         }
@@ -149,10 +143,23 @@ module.exports = function(app) {
 
       app.registerPutHandler(
         self,
-        prefix + `output.${zone}.source`,
+        prefix + `.output.${zone}.isMuted`,
+        (context, path, value, cb) => {
+          sendCommand(deviceid,{
+            action: value === true ? 'mute' : 'unmute',
+            device: prefix
+          })
+          return completed
+        }
+      )
+
+      app.registerPutHandler(
+        self,
+        prefix + `.output.${zone}.source`,
         (context, path, value, cb) => {
           sendCommand(deviceid,{
             action: 'setSource',
+            device: prefix,
             value
           })
           return completed
@@ -162,10 +169,11 @@ module.exports = function(app) {
     
     app.registerPutHandler(
       self,
-      prefix + 'state',
+      prefix + '.state',
       (context, path, value, cb) => {
         sendCommand(deviceid,{
-          action: value === 'on' ? 'poweron' : 'poweroff'
+          action: value === 'on' ? 'poweron' : 'poweroff',
+          device: prefix
         })
         return completed
       }
@@ -173,10 +181,11 @@ module.exports = function(app) {
 
     app.registerPutHandler(
       self,
-      prefix + 'play',
+      prefix + '.play',
       (context, path, value, cb) => {
         sendCommand(deviceid,{
-          action: 'play'
+          action: 'play',
+          device: prefix
         })
         return completed
       }
@@ -184,10 +193,11 @@ module.exports = function(app) {
 
     app.registerPutHandler(
       self,
-      prefix + 'pause',
+      prefix + '.pause',
       (context, path, value, cb) => {
         sendCommand(deviceid,{
-          action: 'pause'
+          action: 'pause',
+          device: prefix
         })
         return completed
       }
@@ -195,10 +205,11 @@ module.exports = function(app) {
 
     app.registerPutHandler(
       self,
-      prefix + 'prev',
+      prefix + '.prev',
       (context, path, value, cb) => {
         sendCommand(deviceid,{
-          action: 'prev'
+          action: 'prev',
+          device: prefix
         })
         return completed
       }
@@ -206,10 +217,11 @@ module.exports = function(app) {
 
     app.registerPutHandler(
       self,
-      prefix + 'next',
+      prefix + '.next',
       (context, path, value, cb) => {
         sendCommand(deviceid,{
-          action: 'next'
+          action: 'next',
+          device: prefix
         })
         return completed
       }
