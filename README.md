@@ -15,7 +15,7 @@ Http:
 ```
 PUT http://localhost:3000/signalk/v1/api/vessels/self/entertainment/device/fusion1/output/zone1/volume/master
 {
-  "value": 12,
+  "value": 12
 }
 ```
 
@@ -40,7 +40,7 @@ The value is a number between 0 and 24
 ```
 PUT http://localhost:3000/signalk/v1/api/vessels/self/entertainment/device/fusion1/output/zone1/volume/master
 {
-  "value": 12,
+  "value": 12
 }
 ```
 
@@ -48,7 +48,7 @@ PUT http://localhost:3000/signalk/v1/api/vessels/self/entertainment/device/fusio
 ```
 PUT http://localhost:3000/signalk/v1/api/vessels/self/entertainment/device/fusion1/output/zone1/isMuted
 {
-  "value": true,
+  "value": true
 }
 ```
 
@@ -56,7 +56,7 @@ PUT http://localhost:3000/signalk/v1/api/vessels/self/entertainment/device/fusio
 ```
 PUT http://localhost:3000/signalk/v1/api/vessels/self/entertainment/device/fusion1/output/zone1/source
 {
-  "value": 'source2',
+  "value": 'source2'
 }
 ```
 
@@ -67,7 +67,7 @@ The value should be 'on' or 'off'
 ```
 PUT http://localhost:3000/signalk/v1/api/vessels/self/entertainment/device/fusion1/state
 {
-  "value": 'on',
+  "value": 'on'
 }
 ```
 
@@ -76,7 +76,7 @@ PUT http://localhost:3000/signalk/v1/api/vessels/self/entertainment/device/fusio
 ```
 PUT http://localhost:3000/signalk/v1/api/vessels/self/entertainment/device/fusion1/play
 {
-  "value": true,
+  "value": true
 }
 ```
 
