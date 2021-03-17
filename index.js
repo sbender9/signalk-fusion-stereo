@@ -30,6 +30,7 @@ const util = require('util')
 const { getN2KCommand, zoneIdToNum, sourceidToNum } = require('./n2k_commands')
 
 const default_device = 'entertainment.device.fusion1'
+const ZONES = [ 'zone1', 'zone2', 'zone3', 'zone4' ]
 
 module.exports = function(app) {
   var unsubscribes = []
@@ -113,6 +114,105 @@ module.exports = function(app) {
         app.error('Error:' + subscriptionError);
       },
       handleDelta
+    )
+
+    registerForPuts('entertainment.device.fusion1.')
+  }
+
+  function registerForPuts(prefix) {
+    const self = 'vessels.self'
+    const completed = {
+      state: 'COMPLETED',
+      statusCode: 200
+    }
+    
+    ZONES.forEach(zone => {
+      app.registerPutHandler(
+        self,
+        prefix + `output.${zone}.volume.master`,
+        (context, path, value, cb) => {
+          sendCommand(deviceid, { action: 'setVolume', zone, value})
+          return completed
+        }
+      )
+
+      app.registerPutHandler(
+        self,
+        prefix + `output.${zone}.isMuted`,
+        (context, path, value, cb) => {
+          sendCommand(deviceid,{
+            action: value === true ? 'mute' : 'unmute'
+          })
+          return completed
+        }
+      )
+
+      app.registerPutHandler(
+        self,
+        prefix + `output.${zone}.source`,
+        (context, path, value, cb) => {
+          sendCommand(deviceid,{
+            action: 'setSource',
+            value
+          })
+          return completed
+        }
+      )
+    })
+    
+    app.registerPutHandler(
+      self,
+      prefix + 'state',
+      (context, path, value, cb) => {
+        sendCommand(deviceid,{
+          action: value === 'on' ? 'poweron' : 'poweroff'
+        })
+        return completed
+      }
+    )
+
+    app.registerPutHandler(
+      self,
+      prefix + 'play',
+      (context, path, value, cb) => {
+        sendCommand(deviceid,{
+          action: 'play'
+        })
+        return completed
+      }
+    )
+
+    app.registerPutHandler(
+      self,
+      prefix + 'pause',
+      (context, path, value, cb) => {
+        sendCommand(deviceid,{
+          action: 'pause'
+        })
+        return completed
+      }
+    )
+
+    app.registerPutHandler(
+      self,
+      prefix + 'prev',
+      (context, path, value, cb) => {
+        sendCommand(deviceid,{
+          action: 'prev'
+        })
+        return completed
+      }
+    )
+
+    app.registerPutHandler(
+      self,
+      prefix + 'next',
+      (context, path, value, cb) => {
+        sendCommand(deviceid,{
+          action: 'next'
+        })
+        return completed
+      }
     )
   }
 
