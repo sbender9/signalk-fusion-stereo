@@ -510,10 +510,15 @@ module.exports = function(app) {
     app.debug("play")
     playing_sound = true
 
-    if ( os.platform() == 'darwin' )
-      command = 'afplay'
-    else
-      command = 'omxplayer'
+    if ( plugin_props.alarmAudioPlayer === undefined ) {
+       if ( os.platform() == 'darwin' )
+         command = 'afplay'
+       else
+         command = 'omxplayer'
+    } else {
+       command = plugin_props.alarmAudioPlayer
+    }
+    app.debug("sound_player: " + command)
 
     sound_file = plugin_props.alarmAudioFile
     if ( sound_file.charAt(0) != '/' )
@@ -559,6 +564,7 @@ module.exports = function(app) {
         "alarmUnMute",
         "alarmSetVolume",
         "alarmVolume",
+        "alarmAudioPlayer",
       ]
     }
     if ( availableSources.length > 0 ) {
@@ -632,6 +638,11 @@ module.exports = function(app) {
           type: "number",
           title: "Alarm Volume (0-24)",
           default: 12
+        },
+        alarmAudioPlayer: {
+          type: "string",
+          title: "Name of audio player (optional)",
+          default: "default"
         }
       }
     }
