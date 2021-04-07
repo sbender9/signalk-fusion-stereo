@@ -583,10 +583,9 @@ module.exports = function(app) {
     }
 
 
+    let defaultAudioPlayer = 'omxplayer'
     if ( os.platform() == 'darwin' )
        defaultAudioPlayer = 'afplay'
-    else
-       defaultAudioPlayer = 'omxplayer'
 
 
     let schema = {
