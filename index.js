@@ -510,14 +510,7 @@ module.exports = function(app) {
     app.debug("play")
     playing_sound = true
 
-    if ( plugin_props.alarmAudioPlayer === undefined ) {
-       if ( os.platform() == 'darwin' )
-         command = 'afplay'
-       else
-         command = 'omxplayer'
-    } else {
-       command = plugin_props.alarmAudioPlayer
-    }
+    command = plugin_props.alarmAudioPlayer
     app.debug("sound_player: " + command)
 
     sound_file = plugin_props.alarmAudioFile
@@ -588,7 +581,14 @@ module.exports = function(app) {
       defaultId = discovered.src
       description = `Found a ${discovered.productName} with src ${discovered.src}`
     }
-   
+
+
+    if ( os.platform() == 'darwin' )
+       defaultAudioPlayer = 'afplay'
+    else
+       defaultAudioPlayer = 'omxplayer'
+
+
     let schema = {
       title: "Fusion Stereo Control",
       type: "object",
@@ -640,9 +640,11 @@ module.exports = function(app) {
           default: 12
         },
         alarmAudioPlayer: {
+          title: "Audio Player",
+          description: "Select command line audio player",
           type: "string",
-          title: "Name of audio player (optional)",
-          default: "default"
+          default: defaultAudioPlayer,
+          "enum": ["afplay", "omxplayer", "mpg321"]
         }
       }
     }
