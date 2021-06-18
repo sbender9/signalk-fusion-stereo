@@ -23,9 +23,8 @@ const endMenu = "%s,7,126720,1,%s,11,a3,99,09,00,0b,00,00,00,00,04,02"
 
 const Bacon = require('baconjs');
 const _ = require('lodash')
-const child_process = require('child_process')
+const playSound = require('play-sound');
 const path = require('path')
-const os = require('os')
 const util = require('util')
 const { getN2KCommand, zoneIdToNum, sourceidToNum } = require('./n2k_commands')
 
@@ -509,38 +508,27 @@ module.exports = function(app) {
   {
     app.debug("play")
     playing_sound = true
-
-    if ( os.platform() == 'darwin' )
-      command = 'afplay'
-    else
-      command = 'omxplayer'
+    // TODO: Expose options via plugin config
+    const player = playSound({});
 
     sound_file = plugin_props.alarmAudioFile
     if ( sound_file.charAt(0) != '/' )
     {
       sound_file = path.join(__dirname, sound_file)
     }
-    app.debug("sound_file: " + sound_file)
-    play = child_process.spawn(command, [ sound_file ])
-
-    play.on('error', (err) => {
-      stop_playing()
-      console.log("failed to play sound")
-    });
-
-    play.on('close', (code) => {
-      if ( code == 0 )
-      {
-        if ( last_states.size > 0 )
-          play_sound(state)
-        //else
-          //stop_playing()
+    app.debug(`Playing ${sound_file} with ${player.player}`);
+    player.play(sound_file, (err) => {
+      if (err) {
+        stop_playing();
+        app.error(`Failed to play sound: ${err.message}`);
+        return;
       }
-      else
-      {
-        app.debug("error")
-        stop_playing()
+      if (last_states.size > 0) {
+        play_sound(state);
+        return;
       }
+      app.debug('Done playing the alarm');
+      stop_playing();
     });
   }
   
