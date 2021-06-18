@@ -516,7 +516,7 @@ module.exports = function(app) {
     {
       sound_file = path.join(__dirname, sound_file)
     }
-    app.debug("sound_file: " + sound_file)
+    app.debug(`Playing ${sound_file} with ${player.player}`);
     player.play(sound_file, (err) => {
       if (err) {
         stop_playing();
@@ -527,6 +527,7 @@ module.exports = function(app) {
         play_sound(state);
         return;
       }
+      app.debug('Done playing the alarm');
       stop_playing();
     });
   }
