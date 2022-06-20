@@ -122,8 +122,8 @@ module.exports = function(app) {
   function registerForPuts(prefix) {
     const self = 'vessels.self'
     const error = {
-      state: 'ERROR',
-      statusCode: 500
+      state: 'COMPLETED',
+      statusCode: 500,
     }
     const completed = {
       state: 'COMPLETED',
@@ -136,19 +136,20 @@ module.exports = function(app) {
         prefix + `.output.${zone}.volume.master`,
         (context, path, value, cb) => {
       	  if (typeof(value) != "number" || (value < 0 || value > 24)) {
-      	    console.log(`value out of range. received '${value}', expected 0 <= value <= 24`)
+            error.message =  `value out of range. received '${value}', expected 0 <= value <= 24`
+      	    app.error(error.message)
             return error
       	  } else {
-      	  	console.log(`setting volume for zone '${zone}' to value '${value}'`)	  
-          	sendCommand(deviceid, {
-            	action: 'setVolume',
-            	device: prefix,
-            	zone,
-            	value})
-            }
-            return completed
+      	    app.debug(`setting volume for zone '${zone}' to value '${value}'`)	  
+            sendCommand(deviceid, {
+              action: 'setVolume',
+              device: prefix,
+              zone,
+              value})
           }
-    )
+          return completed
+        }
+      )
 
       app.registerPutHandler(
         self,
