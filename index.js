@@ -544,12 +544,18 @@ module.exports = function(app) {
     {
       sound_file = path.join(__dirname, sound_file)
     }
-    app.debug("sound_file: " + sound_file)
-    play = child_process.spawn(command, [ sound_file ])
+    let args = [ sound_file ]
+    if ( plugin_props.alarmAudioPlayerArguments && plugin_props.alarmAudioPlayerArguments.length > 0 ) {
+      args = [ ...plugin_props.alarmAudioPlayerArguments.split(' '), ...args ]
+    }
+
+    app.debug("sound command: %s %j", command, args)
+    
+    play = child_process.spawn(command, args)
 
     play.on('error', (err) => {
       stop_playing()
-      console.log("failed to play sound " + err)
+      app.error("failed to play sound " + err)
     });
 
     play.on('close', (code) => {
@@ -584,6 +590,7 @@ module.exports = function(app) {
         "alarmSetVolume",
         "alarmVolume",
         "alarmAudioPlayer",
+        'alarmAudioPlayerArguments'
       ]
     }
     if ( availableSources.length > 0 ) {
@@ -670,6 +677,11 @@ module.exports = function(app) {
           type: "string",
           default: defaultAudioPlayer,
           "enum": ["afplay", "omxplayer", "mpg321"]
+        },
+        alarmAudioPlayerArguments: {
+          title: "Audio Player Arguments",
+          description: "Arguments to add to the audio player command",
+          type: "string"
         }
       }
     }
