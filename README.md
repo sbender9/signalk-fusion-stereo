@@ -78,5 +78,21 @@ PUT http://localhost:3000/signalk/v1/api/vessels/self/entertainment/device/fusio
 {
   "value": true
 }
+
+PUT http://localhost:3000/signalk/v1/api/vessels/self/entertainment/device/fusion1/pause
+{
+  "value": true
+}
+
+PUT http://localhost:3000/signalk/v1/api/vessels/self/entertainment/device/fusion1/prev
+{
+  "value": true
+}
+
+PUT http://localhost:3000/signalk/v1/api/vessels/self/entertainment/device/fusion1/next
+{
+  "value": true
+}
+
 ```
 
