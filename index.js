@@ -51,12 +51,12 @@ module.exports = function(app) {
 
   function setProviderStatus(msg) {
     app.debug(msg)
-    app.setProviderStatus(msg)
+    app.setPluginStatus(msg)
   }
 
   function setProviderError(msg) {
     app.error(msg)
-    app.setProviderError(msg)
+    app.setPluginError(msg)
   }
   plugin.start = function(props) {
     plugin_props = props
@@ -360,7 +360,7 @@ module.exports = function(app) {
 
   function subscription_error(err)
   {
-    console.log("error: " + err)
+    app.error("error: " + err)
   }
   
   function got_delta(notification)
@@ -522,7 +522,7 @@ module.exports = function(app) {
     var sources = app.getSelfPath(default_device + ".avsource")
     if ( typeof sources == 'undefined' )
     {
-      console.log("No Source information")
+      app.debug("No Source information")
       return null;
     }
     
