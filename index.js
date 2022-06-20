@@ -37,6 +37,7 @@ module.exports = function(app) {
   var last_states = new Map();
   var plugin = {}
   var playing_sound = false
+  var last_power_state = null
   var last_source = null
   var last_volumes = null
   var last_muted = null
@@ -377,6 +378,10 @@ module.exports = function(app) {
           last_states.set(value.path, value.value.state)
           if ( playing_sound == false )
           {
+
+            last_power_state = app.getSelfPath(default_device + ".state.value") == 'on'
+            power(true)
+
             setup_for_alarm()
             play_sound(value.value.state)
           }
@@ -389,6 +394,10 @@ module.exports = function(app) {
     })
     if ( last_states.size === 0 && playing_sound ) {
       stop_playing()
+
+      setTimeout(function() {
+        power(last_power_state)
+      }, 1000)
     }
   }
 
@@ -485,6 +494,13 @@ module.exports = function(app) {
     action = muted ? "mute" : "unmute"
     sendCommand(deviceid, { "action": action, "device": default_device })
   }
+
+  function power(state) 
+  {
+    app.debug("setting power to " + state)
+    action = state ? "poweron" : "poweroff"
+    sendCommand(deviceid,{ "action": action, "device": default_device })
+  }
   
   function switch_to_source(id)
   {
@@ -533,7 +549,7 @@ module.exports = function(app) {
 
     play.on('error', (err) => {
       stop_playing()
-      console.log("failed to play sound")
+      console.log("failed to play sound " + err)
     });
 
     play.on('close', (code) => {
@@ -784,8 +800,7 @@ module.exports = function(app) {
         {
           currentSource = sources[cur_source_id]["name"]["value"]
         }
-      }
-      
+      }      
       
       n2k_msg = getN2KCommand(deviceid, command_json, currentSource, cur_source_id)
       
