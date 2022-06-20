@@ -437,7 +437,12 @@ module.exports = function(app) {
     setTimeout(function() {
       if ( plugin_props.alarmSetVolume )
       {
-        set_volumes([plugin_props.alarmVolume, plugin_props.alarmVolume, plugin_props.alarmVolume, plugin_props.alarmVolume])
+        let volumes = []
+        for ( var i = 1; i < 5; i++ ) {
+          let setting =  plugin_props['alarmZone'+ i]
+          volumes.push(typeof setting === 'undefined' || setting ? plugin_props.alarmVolume : 0)
+        }
+        set_volumes(volumes)
       }
 
       setTimeout(function() {
@@ -479,6 +484,7 @@ module.exports = function(app) {
 
   function set_volumes(volumes)
   {
+    app.debug('setting volumes to %j', volumes)
     sendCommand(deviceid, { "action": 'setAllVolume',
                             "device": default_device,
                             "value": {
@@ -589,6 +595,10 @@ module.exports = function(app) {
         "alarmUnMute",
         "alarmSetVolume",
         "alarmVolume",
+        "alarmZone1",
+        "alarmZone2",
+        "alarmZone3",
+        "alarmZone4",
         "alarmAudioPlayer",
         'alarmAudioPlayerArguments'
       ]
@@ -670,6 +680,26 @@ module.exports = function(app) {
           type: "number",
           title: "Alarm Volume (0-24)",
           default: 12
+        },
+        alarmZone1: {
+          type: "boolean",
+          title: "Alarms to Zone 1",
+          default: true
+        },
+        alarmZone2: {
+          type: "boolean",
+          title: "Alarms to Zone 2",
+          default: true
+        },
+        alarmZone3: {
+          type: "boolean",
+          title: "Alarms to Zone 3",
+          default: true
+        },
+        alarmZone4: {
+          type: "boolean",
+          title: "Alarms to Zone 4",
+          default: true
         },
         alarmAudioPlayer: {
           title: "Audio Player",
