@@ -380,7 +380,9 @@ module.exports = function(app) {
           {
 
             last_power_state = app.getSelfPath(default_device + ".state.value") == 'on'
-            power(true)
+            if ( !last_power_state ) {
+              power(true)
+            }
 
             setup_for_alarm()
             play_sound(value.value.state)
@@ -540,7 +542,12 @@ module.exports = function(app) {
   function play_sound(state)
   {
     app.debug("play")
+
     playing_sound = true
+
+    if ( plugin_props.playSound !== undefined && !plugin_props.playSound ) {
+      return
+    }
 
     command = plugin_props.alarmAudioPlayer
     app.debug("sound_player: " + command)
@@ -560,7 +567,7 @@ module.exports = function(app) {
     play = child_process.spawn(command, args)
 
     play.on('error', (err) => {
-      stop_playing()
+      //stop_playing()
       app.error("failed to play sound " + err)
     });
 
@@ -574,8 +581,8 @@ module.exports = function(app) {
       }
       else
       {
-        app.debug("error")
-        stop_playing()
+        app.debug("error playing sound")
+        //stop_playing()
       }
     });
   }
@@ -590,6 +597,7 @@ module.exports = function(app) {
         "autoDiscover",
         "deviceid",
         "enableAlarms",
+        "playSound",
         "alarmInput",
         "alarmAudioFile",
         "alarmUnMute",
@@ -655,6 +663,11 @@ module.exports = function(app) {
           type: "boolean",
           title: "Output Alarms To Stereo",
           default: false
+        },
+        playSound: {
+          type: "boolean",
+          title: "Plays Sound",
+          default: true
         },
         alarmInput: {
           type: "string",
