@@ -777,6 +777,8 @@ module.exports = function(app) {
       let msg = util.format(format, isoDate(), deviceid)
       app.debug("n2k_msg: " + msg)
       app.emit('nmea2000out', msg);
+      app.reportOutputMessages(1)
+
     })
   }
 
@@ -785,6 +787,7 @@ module.exports = function(app) {
     let msg = util.format(endMenu, isoDate(), deviceid)
     app.debug("n2k_msg: " + msg)
     app.emit('nmea2000out', msg);
+    app.reportOutputMessages(1)
   }
 
   function subscribeToAlarms()
@@ -859,10 +862,17 @@ module.exports = function(app) {
       
       n2k_msg = getN2KCommand(deviceid, command_json, currentSource, cur_source_id)
       
-      if ( n2k_msg )
+      if ( typeof n2k_msg === 'string' )
       {
         app.debug("n2k_msg: " + n2k_msg)
         app.emit('nmea2000out', n2k_msg);
+        app.reportOutputMessages(1)
+      }
+      else
+      {
+        app.debug("n2k_json: " + JSON.stringify(n2k_msg))
+        app.emit('nmea2000JsonOut', n2k_msg);
+        app.reportOutputMessages(1)
       }
     }
   }
