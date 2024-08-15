@@ -1,14 +1,34 @@
 const util = require('util')
 
 const fusion_commands = {
-  "next": "%s,6,126720,%s,%s,6,a3,99,03,00,%s,04",
-  "prev": "%s,6,126720,%s,%s,6,a3,99,03,00,%s,06",
+  next: {
+    "Proprietary ID":"Media Control",
+    "Command":"Next",
+    "Unknown": 0
+  },
+  prev: {
+    "Proprietary ID":"Media Control",
+    "Command":"Prev",
+    "Unknown": 0
+  },
   "SiriusXM_next": "%s,7,126720,%s,%s,8,a3,99,1e,00,%s,01,00,00",
   "SiriusXM_prev": "%s,7,126720,%s,%s,8,a3,99,1e,00,%s,02,00,00",
-  "play": "%s,6,126720,%s,%s,6,a3,99,03,00,%s,01",
-  "pause": "%s,6,126720,%s,%s,6,a3,99,03,00,%s,02",
+  play: {
+    "Proprietary ID":"Media Control",
+    "Command":"Play",
+    "Unknown": 0
+  },
+  pause: {
+    "Proprietary ID":"Media Control",
+    "Command":"Pause",
+    "Unknown": 0
+  },
   "status": "%s,6,126720,%s,%s,4,a3,99,01,00",
-  "mute": "%s,6,126720,%s,%s,5,a3,99,11,00,01",
+  //"mute": "%s,6,126720,%s,%s,5,a3,99,11,00,01",
+  mute: {
+    "Proprietary ID":"Mute",
+    "Command":"Mute On",
+  },
   "unmute": "%s,6,126720,%s,%s,5,a3,99,11,00,02",
   "setSource": "%s,6,126720,%s,%s,5,a3,99,02,00,%s",
   "setVolume": "%s,6,126720,%s,%s,6,a3,99,18,00,%s,%s",
@@ -46,7 +66,7 @@ function padd(n, p, c)
   var pad_count = typeof p !== 'undefined' ? p : 2
   var pad_char = typeof c !== 'undefined' ? c : '0';
   var pad = new Array(1 + pad_count).join(pad_char);
-  return (pad + n).slice(-pad.length);
+   return (pad + n).slice(-pad.length);
 }
 
 function getN2KCommand(deviceid, command_json, currentSource, cur_source_id)
@@ -88,13 +108,15 @@ function getN2KCommand(deviceid, command_json, currentSource, cur_source_id)
     if ( currentSource == 'SiriusXM' )
     {
       format = fusion_commands["SiriusXM_"+action]
-    }
-    
-    if ( format )
-    {
-      n2k_msg = util.format(format,
-			    isoDate(), default_src, deviceid,
-			    sourceidToNum(cur_source_id))
+      
+      if ( format )
+      {
+        n2k_msg = util.format(format,
+			      isoDate(), default_src, deviceid,
+			      sourceidToNum(cur_source_id))
+      }
+    } else {
+      format["Source ID"] = parseInt(sourceidToNum(cur_source_id), 16)
     }
   }
   else if ( action === 'setBTDevice' )
@@ -102,9 +124,19 @@ function getN2KCommand(deviceid, command_json, currentSource, cur_source_id)
     n2k_msg = util.format(format, isoDate(), default_src, deviceid,
                           padd(command_json['value']).toString(16))
   }
-  else
+  else if ( typeof format === 'string' )
   {
     n2k_msg = util.format(format, isoDate(), default_src, deviceid)
+  }
+
+  if ( !n2k_msg && format )
+  {
+    format.pgn = 126720
+    format.dst = deviceid
+    //format["Manufacturer Code"] = "Fusion Electronics"
+    format["Manufacturer Code"] = 419
+    format["Industry Code"] = "Marine Industry"
+    n2k_msg = format
   }
 
   return n2k_msg
