@@ -183,7 +183,7 @@ module.exports = function(app) {
       prefix + '.state',
       (context, path, value, cb) => {
         sendCommand(deviceid,{
-          action: value === 'on' ? 'poweron' : 'poweroff',
+          action: value === 'on' || value === 1 || value === true ? 'poweron' : 'poweroff',
           device: prefix
         })
         return completed
