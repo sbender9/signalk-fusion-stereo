@@ -5,8 +5,6 @@
   "main": "index.js",
   "scripts": {
     "test": "$NODE $npm_package_main",
-    "create-release": "github-create-release --owner sbender9 --repository $npm_package_name",
-    "release": "git tag -d v$npm_package_version && git tag v$npm_package_version && git push --tags && git push && npm run create-release",
     "build_ios": "webpack ios.js -o ios_fusion.js"
   },
   "keywords": [
@@ -26,7 +24,6 @@
   },
   "signalk-plugin-enabled-by-default": true,
   "devDependencies": {
-    "@signalk/github-create-release": "^1.2.0",
     "webpack": "^4.42.0",
     "webpack-cli": "^3.3.11"
   }
