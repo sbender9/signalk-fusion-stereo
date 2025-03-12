@@ -48,6 +48,7 @@ module.exports = function(app) {
   var lastBtDevices
   var availableZones = []
   var availableSources = []
+  let currentSource
 
   function setProviderStatus(msg) {
     app.debug(msg)
@@ -177,6 +178,23 @@ module.exports = function(app) {
         }
       )
     })
+
+    app.registerPutHandler(
+      self,
+      prefix + '.toggleMute',
+      (context, path, value, cb) => {
+        let state = app.getSelfPath(`${default_device}.output.zone1.isMuted`)
+        
+        if (!state || state.value === undefined )
+          return { ...error, message: 'no current mute state' }
+        
+        sendCommand(deviceid,{
+          action: state.value == true ? 'unmute' : 'mute',
+          device: prefix
+        })
+        return completed
+        }
+    )
     
     app.registerPutHandler(
       self,
@@ -196,6 +214,40 @@ module.exports = function(app) {
       (context, path, value, cb) => {
         sendCommand(deviceid,{
           action: 'play',
+          device: prefix
+        })
+        return completed
+      }
+    )
+
+    app.registerPutHandler(
+      self,
+      prefix + '.playPause',
+      (context, path, value, cb) => {
+        let state = app.getSelfPath(`${default_device}.playbackState`)
+        
+        if (!state || state.value === undefined )
+          return { ...error, message: 'no current playbackState' }
+        
+        sendCommand(deviceid,{
+          action: state.value == true ? 'pause' : 'play',
+          device: prefix
+        })
+        return completed
+      }
+    )
+
+    app.registerPutHandler(
+      self,
+      prefix + '.togglePower',
+      (context, path, value, cb) => {
+        let state = app.getSelfPath(`${default_device}.state`)
+        
+        if (!state || !state.value )
+          return { ...error, message: 'no current power state' }
+        
+        sendCommand(deviceid,{
+          action: state.value == 'on' ? 'poweroff' : 'poweron',
           device: prefix
         })
         return completed
@@ -237,6 +289,37 @@ module.exports = function(app) {
         return completed
       }
     )
+
+    app.registerPutHandler(
+      self,
+      prefix + '.outputAlarms',
+      (context, path, value, cb) => {
+        sendCommand(deviceid,{
+          action: 'playAlarms',
+          device: prefix,
+          value: value
+        })
+        return completed
+      }
+    )
+
+    app.registerPutHandler(
+      self,
+      prefix + '.toggleOutputAlarms',
+      (context, path, value, cb) => {
+        let state = app.getSelfPath(`${default_device}.outputAlarms`)
+        
+        if (!state || state.value === undefined )
+          return { ...error, message: 'no current outputAlarms state' }
+        
+        sendCommand(deviceid,{
+          action: 'playAlarms',
+          device: prefix,
+          value: state.value ? false : true
+        })
+        return completed
+      }
+    )
   }
 
   function sendEnabled(props, pv) {
@@ -256,22 +339,108 @@ module.exports = function(app) {
     app.handleMessage(plugin.id, delta)
   }
 
+  function sendTrackInfo(pv) {
+    let parts = pv.path.split('.')
+    let key = parts[parts.length-1]
+    let path = `${default_device}.track.${key}`
+    sendDelta(path, pv.value)
+  }
+
+  function sendSourceInfo(pv) {
+    if ( pv.path.endsWith('.name') ) return
+    let parts = pv.path.split('.')
+    let key = parts[parts.length-1]
+    let path = `${default_device}.${key}`
+    let value = pv.value
+    switch ( key ) {
+    case 'playbackState':
+      value = pv.value == 'Playing' ? true : false
+      break
+    }
+    sendDelta(path, value)
+  }
+
+  function sendAvailableSources() {
+    let sources = app.getSelfPath(`${default_device}.avsource`) ?? {}
+    let res = []
+    _.keys(sources).forEach( source => {
+      if (sources[source].enabled && sources[source].enabled.value ) {
+        res.push(sources[source].name.value)
+      }
+    })
+    sendDelta(`${default_device}.sources`, res)
+  }
+
+  function getZoneVolume(zone) {
+    let vol = app.getSelfPath(`${default_device}.output.zone${zone}.volume.master`)
+    return vol !== undefined && vol.value != undefined ? vol.value : 0
+  }
+
+  function sendVolume() {
+    let vol1 = getZoneVolume(1)
+    let vol2 = getZoneVolume(2)
+    let vol3 = getZoneVolume(3)
+    let vol4 = getZoneVolume(4)
+    sendDelta(`${default_device}.volume`,
+              Math.max(getZoneVolume(1),
+                       getZoneVolume(2),
+                       getZoneVolume(3),
+                       getZoneVolume(4)))
+  }
+
+  function sendDelta(path, value) {
+    let delta = {
+      updates: [
+        {
+          values: [
+            {
+              path: path,
+              value: value
+            }
+          ]
+        }
+      ]
+    }
+    app.handleMessage(plugin.id, delta)
+  }
+
   function handleDelta(delta) {
     delta.updates.forEach(update => {
+      if ( !update.values )
+        return
+      
       update.values.forEach(pv => {
-        if(pv.path.startsWith('entertainment.device.fusion1.output.zone')) {
+        if ( pv.path === `${default_device}.output.zone1.source` ) {
+          currentSource = pv.value
+          sendDelta(`${default_device}.source`,
+                    app.getSelfPath(`${currentSource}.name`).value)
+        }
+
+        if(pv.path.startsWith(`${default_device}.output.zone`)) {
           if ( pv.path.endsWith('name') ) {
             if ( availableZones.indexOf(pv.value) === -1 ) {
               availableZones.push(pv.value)
             }
             sendEnabled(plugin_props.availableZones, pv)
           }
-        } else if ( pv.path.startsWith('entertainment.device.fusion1.avsource') ) {
+          if ( pv.path.endsWith('volume.master') ) {
+            sendVolume()
+          }
+        } else if ( pv.path.startsWith(`${default_device}.avsource`) ) {
           if ( pv.path.endsWith('name') && !pv.path.endsWith('track.name') ) {
             if ( availableSources.indexOf(pv.value) === -1 ) {
               availableSources.push(pv.value)
             }
             sendEnabled(plugin_props.availableSources, pv)
+            sendAvailableSources()
+          }
+
+          if ( currentSource && pv.path.startsWith(currentSource) ) {
+            if ( pv.path.indexOf('.track.') != -1 ) {
+              sendTrackInfo(pv)
+            } else {
+              sendSourceInfo(pv)
+            }
           }
         }
       })
@@ -368,6 +537,9 @@ module.exports = function(app) {
     //app.debug("notification: %o", notification)
     
     notification.updates.forEach(function(update) {
+      if ( update.values === undefined )
+        return
+      
       update.values.forEach(function(value) {
         if ( value.value != null
              && typeof value.value.state != 'undefined' 
@@ -411,7 +583,7 @@ module.exports = function(app) {
           values: [
             {
               path: "entertainment.device.fusion1.outputAlarms",
-              value: enabled ? 1 : 0
+              value: enabled ? true : false
             }
           ]
         }
