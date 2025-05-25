@@ -85,11 +85,13 @@ module.exports = function(app) {
       }
     });
 
-    statusInterval = setInterval(() => {
-      if ( deviceid ) {
-        sendCommand(deviceid, { "action": "status"})
-      }
-    }, 10000)
+    if ( props.sendStatusRequests === undefined || props.sendStatusRequests === true ) {
+      statusInterval = setInterval(() => {
+        if ( deviceid ) {
+          sendCommand(deviceid, { "action": "status"})
+        }
+      }, 10000)
+    }
 
     if ( props.enableAlarms )
     {
@@ -780,7 +782,8 @@ module.exports = function(app) {
         "alarmZone3",
         "alarmZone4",
         "alarmAudioPlayer",
-        'alarmAudioPlayerArguments'
+        'alarmAudioPlayerArguments',
+        'sendStatusRequests'
       ]
     }
     if ( availableSources.length > 0 ) {
@@ -897,7 +900,13 @@ module.exports = function(app) {
           title: "Audio Player Arguments",
           description: "Arguments to add to the audio player command",
           type: "string"
-        }
+        },
+        sendStatusRequests: {
+          type: "boolean",
+          title: "Send status request",
+          description: "Disable this if the plugin is pausing your stereo every ten seconds",
+          default: true
+        },
       }
     }
     
