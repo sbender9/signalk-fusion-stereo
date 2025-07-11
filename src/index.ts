@@ -14,6 +14,14 @@
  * limitations under the License.
  */
 
+import { convertCamelCase } from '@canboat/ts-pgns'
+import { Plugin, ActionResult } from '@signalk/server-api'
+import child_process from 'child_process'
+import path from 'path'
+import os from 'os'
+import util from 'util'
+import { getN2KCommand } from './n2k_commands'
+
 const getBTDevices = [
   '%s,7,126720,1,%s,11,a3,99,09,00,0b,00,00,00,00,01,02',
   '%s,7,126720,1,%s,11,a3,99,09,00,0b,00,00,00,00,01,02',
@@ -21,13 +29,6 @@ const getBTDevices = [
 ]
 
 const endMenu = '%s,7,126720,1,%s,11,a3,99,09,00,0b,00,00,00,00,04,02'
-
-import { Plugin, ActionResult } from '@signalk/server-api'
-import child_process from 'child_process'
-import path from 'path'
-import os from 'os'
-import util from 'util'
-import { getN2KCommand } from './n2k_commands'
 
 const default_device = 'entertainment.device.fusion1'
 const ZONES = ['zone1', 'zone2', 'zone3', 'zone4']
@@ -1032,7 +1033,6 @@ module.exports = function (app: any) {
       return
     }
 
-    let n2k_msg = null
     const action = command_json['action']
     const path = command_json['device']
 
@@ -1053,11 +1053,11 @@ module.exports = function (app: any) {
         const sidPath = path + '.output.zone1.source.value'
         cur_source_id = app.getSelfPath(sidPath)
 
-        app.debug('sidPath: %s cur_source_id %s', sidPath, cur_source_id)
+        //app.debug('sidPath: %s cur_source_id %s', sidPath, cur_source_id)
 
         cur_source_id = cur_source_id.substring((path + '.avsource.').length)
         const sources = app.getSelfPath(path + '.avsource')
-        app.debug('sources: %j cur_source_id: %s', sources, cur_source_id)
+        //app.debug('sources: %j cur_source_id: %s', sources, cur_source_id)
         if (
           typeof cur_source_id != 'undefined' &&
           typeof sources != 'undefined'
@@ -1066,20 +1066,23 @@ module.exports = function (app: any) {
         }
       }
 
-      n2k_msg = getN2KCommand(
+      const n2k_msg = getN2KCommand(
         deviceid,
         command_json,
         currentSource,
         cur_source_id
       )
 
-      if (typeof n2k_msg === 'string') {
+      if (n2k_msg === undefined) {
+        app.debug('no n2k message for ' + action)
+      } else if (typeof n2k_msg === 'string') {
         app.debug('n2k_msg: ' + n2k_msg)
         app.emit('nmea2000out', n2k_msg)
         app.reportOutputMessages(1)
       } else {
-        app.debug('n2k_json: ' + JSON.stringify(n2k_msg))
-        app.emit('nmea2000JsonOut', n2k_msg)
+        const converted = convertCamelCase(app, n2k_msg)
+        app.debug('n2k_json: ' + JSON.stringify(converted))
+        app.emit('nmea2000JsonOut', converted)
         app.reportOutputMessages(1)
       }
     }

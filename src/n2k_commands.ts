@@ -14,25 +14,144 @@
  * limitations under the License.
  */
 
+import {
+  PGN,
+  PGN_126720_FusionMediaControl,
+  PGN_126720_FusionSiriusControl,
+  PGN_126720_FusionRequestStatus,
+  PGN_126720_FusionSetMute,
+  PGN_126720_FusionSetSource,
+  PGN_126720_FusionSetZoneVolume,
+  PGN_126720_FusionSetAllVolumes,
+  PGN_126720_FusionSetPower,
+  FusionCommand,
+  FusionSiriusCommand,
+  FusionMuteCommand,
+  FusionPowerState
+} from '@canboat/ts-pgns'
 import util from 'util'
 
-const fusion_commands: { [key: string]: string } = {
-  next: '%s,6,126720,%s,%s,6,a3,99,03,00,%s,04',
-  prev: '%s,6,126720,%s,%s,6,a3,99,03,00,%s,06',
-  SiriusXM_next: '%s,7,126720,%s,%s,8,a3,99,1e,00,%s,01,00,00',
-  SiriusXM_prev: '%s,7,126720,%s,%s,8,a3,99,1e,00,%s,02,00,00',
-  play: '%s,6,126720,%s,%s,6,a3,99,03,00,%s,01',
-  pause: '%s,6,126720,%s,%s,6,a3,99,03,00,%s,02',
-  status: '%s,6,126720,%s,%s,4,a3,99,01,00',
-  mute: '%s,6,126720,%s,%s,5,a3,99,11,00,01',
-  unmute: '%s,6,126720,%s,%s,5,a3,99,11,00,02',
-  setSource: '%s,6,126720,%s,%s,5,a3,99,02,00,%s',
-  setVolume: '%s,6,126720,%s,%s,6,a3,99,18,00,%s,%s',
-  setAllVolume: '%s,6,126720,%s,%s,8,a3,99,19,00,%s,%s,%s,%s',
-  poweron: '%s,6,126720,%s,%s,5,a3,99,1c,00,01',
-  poweroff: '%s,6,126720,%s,%s,5,a3,99,1c,00,02',
+const fusion_commands: {
+  [key: string]: string | ((sourceId: number, dst: number) => PGN)
+} = {
+  //next: '%s,6,126720,%s,%s,6,a3,99,03,00,%s,04',
+  next: (sourceId: number, dst: number) =>
+    new PGN_126720_FusionMediaControl(
+      {
+        command: FusionCommand.Next,
+        sourceId,
+        unknown: 0
+      },
+      dst
+    ),
+  //prev: '%s,6,126720,%s,%s,6,a3,99,03,00,%s,06',
+  prev: (sourceId: number, dst: number) =>
+    new PGN_126720_FusionMediaControl(
+      {
+        command: FusionCommand.Prev,
+        sourceId,
+        unknown: 0
+      },
+      dst
+    ),
+  //play: '%s,6,126720,%s,%s,6,a3,99,03,00,%s,01',
+  play: (sourceId: number, dst: number) =>
+    new PGN_126720_FusionMediaControl(
+      {
+        command: FusionCommand.Play,
+        sourceId,
+        unknown: 0
+      },
+      dst
+    ),
+  //pause: '%s,6,126720,%s,%s,6,a3,99,03,00,%s,02',
+  pause: (sourceId: number, dst: number) =>
+    new PGN_126720_FusionMediaControl(
+      {
+        command: FusionCommand.Pause,
+        sourceId,
+        unknown: 0
+      },
+      dst
+    ),
+  //SiriusXM_next: '%s,7,126720,%s,%s,8,a3,99,1e,00,%s,01,00,00',
+  SiriusXM_next: (sourceId: number, dst: number) =>
+    new PGN_126720_FusionSiriusControl(
+      {
+        command: FusionSiriusCommand.Next,
+        sourceId,
+        unknown: 0
+      },
+      dst
+    ),
+  //SiriusXM_prev: '%s,7,126720,%s,%s,8,a3,99,1e,00,%s,02,00,00',
+  SiriusXM_prev: (sourceId: number, dst: number) =>
+    new PGN_126720_FusionSiriusControl(
+      {
+        command: FusionSiriusCommand.Prev,
+        sourceId,
+        unknown: 0
+      },
+      dst
+    ),
+  //status: '%s,6,126720,%s,%s,4,a3,99,01,00',
+  status: (_sourceId: number, dst: number) =>
+    new PGN_126720_FusionRequestStatus(
+      {
+        unknown: 0
+      },
+      dst
+    ),
+  //mute: '%s,6,126720,%s,%s,5,a3,99,11,00,01',
+  mute: (_sourceId: number, dst: number) =>
+    new PGN_126720_FusionSetMute(
+      {
+        unknown: 0,
+        command: FusionMuteCommand.MuteOn
+      },
+      dst
+    ),
+  //unmute: '%s,6,126720,%s,%s,5,a3,99,11,00,02',
+  unmute: (_sourceId: number, dst: number) =>
+    new PGN_126720_FusionSetMute(
+      {
+        unknown: 0,
+        command: FusionMuteCommand.MuteOff
+      },
+      dst
+    ),
+  //setSource: '%s,6,126720,%s,%s,5,a3,99,02,00,%s',
+  setSource: (sourceId: number, dst: number) =>
+    new PGN_126720_FusionSetSource(
+      {
+        sourceId,
+        unknown: 0
+      },
+      dst
+    ),
+  //poweron: '%s,6,126720,%s,%s,5,a3,99,1c,00,01',
+  poweron: (_sourceId: number, dst: number) =>
+    new PGN_126720_FusionSetPower(
+      {
+        unknown: 0,
+        power: FusionPowerState.On
+      },
+      dst
+    ),
+  //poweroff: '%s,6,126720,%s,%s,5,a3,99,1c,00,02',
+  poweroff: (_sourceId: number, dst: number) =>
+    new PGN_126720_FusionSetPower(
+      {
+        unknown: 0,
+        power: FusionPowerState.Off
+      },
+      dst
+    ),
   setBTDevice: '%s,7,126720,%s,%s,11,a3,99,09,00,0b,%s,00,00,00,02,02'
 }
+
+//setVolume: '%s,6,126720,%s,%s,6,a3,99,18,00,%s,%s',
+//setAllVolume: '%s,6,126720,%s,%s,8,a3,99,19,00,%s,%s,%s,%s',
 
 const default_src = '1'
 
@@ -40,12 +159,12 @@ function checkVolume(val: number) {
   return typeof val !== 'undefined' ? val : 0
 }
 
-export function zoneIdToNum(id: string) {
-  return padd((Number(id.substring('zone'.length)) - 1).toString(16))
+function zoneIdToNum(id: string) {
+  return Number(id.substring('zone'.length)) - 1
 }
 
-export function sourceidToNum(id: string) {
-  return padd(Number(id.substring('source'.length)).toString(16))
+function sourceidToNum(id: string) {
+  return id !== undefined ? Number(id.substring('source'.length)) : 0
 }
 
 function isoDate() {
@@ -68,20 +187,11 @@ export function getN2KCommand(
   command_json: any,
   currentSource: string,
   cur_source_id: string
-) {
+): string | PGN | undefined {
   let n2k_msg = null
-  const action = command_json['action']
+  let action = command_json['action']
 
-  let format = fusion_commands[action]
-  if (action == 'setSource') {
-    n2k_msg = util.format(
-      format,
-      isoDate(),
-      default_src,
-      deviceid,
-      sourceidToNum(command_json['value'])
-    )
-  } else if (action == 'setAllVolume') {
+  if (action == 'setAllVolume') {
     const volumes = command_json['value']
 
     const zone1 = checkVolume(volumes['zone1'])
@@ -89,54 +199,60 @@ export function getN2KCommand(
     const zone3 = checkVolume(volumes['zone3'])
     const zone4 = checkVolume(volumes['zone4'])
 
-    n2k_msg = util.format(
-      format,
-      isoDate(),
-      default_src,
-      deviceid,
-      padd(zone1.toString(16)),
-      padd(zone2.toString(16)),
-      padd(zone3.toString(16)),
-      padd(zone4.toString(16))
+    n2k_msg = new PGN_126720_FusionSetAllVolumes(
+      {
+        zone1,
+        zone2,
+        zone3,
+        zone4,
+        unknown: 0
+      },
+      deviceid
     )
   } else if (action == 'setVolume') {
-    n2k_msg = util.format(
-      format,
-      isoDate(),
-      default_src,
-      deviceid,
-      zoneIdToNum(command_json['zone']),
-      padd(command_json['value'].toString(16))
+    n2k_msg = new PGN_126720_FusionSetZoneVolume(
+      {
+        zone: zoneIdToNum(command_json['zone']),
+        volume: command_json['value'],
+        unknown:0
+      },
+      deviceid
     )
-  } else if (
-    action == 'next' ||
-    action == 'prev' ||
-    action == 'play' ||
-    action == 'pause'
-  ) {
-    if (currentSource == 'SiriusXM') {
-      format = fusion_commands['SiriusXM_' + action]
+  } else {
+    if (
+      action == 'next' ||
+      action == 'prev' ||
+      action == 'play' ||
+      action == 'pause'
+    ) {
+      action = currentSource == 'SiriusXM' ? `SiriusXM_${action}` : action
     }
 
-    if (format) {
+    const format = fusion_commands[action]
+
+    if (format === undefined) {
+      return undefined
+    }
+
+    if (typeof format !== 'string') {
+      let sourceId: number
+      if (action === 'setSource') {
+        sourceId = sourceidToNum(command_json['value'])
+      } else {
+        sourceId = sourceidToNum(cur_source_id)
+      }
+      n2k_msg = format(sourceId, deviceid)
+    } else if (action === 'setBTDevice') {
       n2k_msg = util.format(
         format,
         isoDate(),
         default_src,
         deviceid,
-        sourceidToNum(cur_source_id)
+        padd(command_json['value'].toString(16))
       )
+    } else {
+      n2k_msg = util.format(format, isoDate(), default_src, deviceid)
     }
-  } else if (action === 'setBTDevice') {
-    n2k_msg = util.format(
-      format,
-      isoDate(),
-      default_src,
-      deviceid,
-      padd(command_json['value'].toString(16))
-    )
-  } else {
-    n2k_msg = util.format(format, isoDate(), default_src, deviceid)
   }
 
   return n2k_msg
