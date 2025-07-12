@@ -40,7 +40,6 @@ const fusion_commands: {
       {
         command: FusionCommand.Next,
         sourceId,
-        unknown: 0
       },
       dst
     ),
@@ -50,7 +49,6 @@ const fusion_commands: {
       {
         command: FusionCommand.Prev,
         sourceId,
-        unknown: 0
       },
       dst
     ),
@@ -60,7 +58,6 @@ const fusion_commands: {
       {
         command: FusionCommand.Play,
         sourceId,
-        unknown: 0
       },
       dst
     ),
@@ -70,7 +67,6 @@ const fusion_commands: {
       {
         command: FusionCommand.Pause,
         sourceId,
-        unknown: 0
       },
       dst
     ),
@@ -80,7 +76,6 @@ const fusion_commands: {
       {
         command: FusionSiriusCommand.Next,
         sourceId,
-        unknown: 0
       },
       dst
     ),
@@ -90,7 +85,6 @@ const fusion_commands: {
       {
         command: FusionSiriusCommand.Prev,
         sourceId,
-        unknown: 0
       },
       dst
     ),
@@ -98,7 +92,6 @@ const fusion_commands: {
   status: (_sourceId: number, dst: number) =>
     new PGN_126720_FusionRequestStatus(
       {
-        unknown: 0
       },
       dst
     ),
@@ -106,7 +99,6 @@ const fusion_commands: {
   mute: (_sourceId: number, dst: number) =>
     new PGN_126720_FusionSetMute(
       {
-        unknown: 0,
         command: FusionMuteCommand.MuteOn
       },
       dst
@@ -115,7 +107,6 @@ const fusion_commands: {
   unmute: (_sourceId: number, dst: number) =>
     new PGN_126720_FusionSetMute(
       {
-        unknown: 0,
         command: FusionMuteCommand.MuteOff
       },
       dst
@@ -125,7 +116,6 @@ const fusion_commands: {
     new PGN_126720_FusionSetSource(
       {
         sourceId,
-        unknown: 0
       },
       dst
     ),
@@ -133,7 +123,6 @@ const fusion_commands: {
   poweron: (_sourceId: number, dst: number) =>
     new PGN_126720_FusionSetPower(
       {
-        unknown: 0,
         power: FusionPowerState.On
       },
       dst
@@ -142,7 +131,6 @@ const fusion_commands: {
   poweroff: (_sourceId: number, dst: number) =>
     new PGN_126720_FusionSetPower(
       {
-        unknown: 0,
         power: FusionPowerState.Off
       },
       dst
@@ -205,7 +193,6 @@ export function getN2KCommand(
         zone2,
         zone3,
         zone4,
-        unknown: 0
       },
       deviceid
     )
@@ -214,7 +201,6 @@ export function getN2KCommand(
       {
         zone: zoneIdToNum(command_json['zone']),
         volume: command_json['value'],
-        unknown:0
       },
       deviceid
     )

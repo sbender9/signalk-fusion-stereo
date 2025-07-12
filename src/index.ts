@@ -706,8 +706,10 @@ module.exports = function (app: any) {
         const fields = msg['fields']
         if (
           msg.pgn === 130820 &&
-          fields['Manufacturer Code'] === 'Fusion' &&
-          fields['Message ID'] === 'Menu Item'
+            (fields['Manufacturer Code'] === 'Fusion' ||
+             fields['manufacturerCode'] === 'Fusion')  &&
+            (fields['Message ID'] === 'Menu Item' ||
+             fields['messageId'] === 'Menu Item')
         ) {
           const name = fields['Text']
 
