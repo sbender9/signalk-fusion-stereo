@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-import { convertCamelCase } from '@canboat/ts-pgns'
+import { convertCamelCase, PGN_130820_FusionMenuItem } from '@canboat/ts-pgns'
 import { Plugin, ActionResult } from '@signalk/server-api'
 import child_process from 'child_process'
 import path from 'path'
@@ -704,14 +704,9 @@ module.exports = function (app: any) {
       let found = false
       const menu_items = (msg: any) => {
         const fields = msg['fields']
-        if (
-          msg.pgn === 130820 &&
-            (fields['Manufacturer Code'] === 'Fusion' ||
-             fields['manufacturerCode'] === 'Fusion')  &&
-            (fields['Message ID'] === 'Menu Item' ||
-             fields['messageId'] === 'Menu Item')
-        ) {
-          const name = fields['Text']
+        if ( PGN_130820_FusionMenuItem.isMatch(msg) ) {
+          const pgn: PGN_130820_FusionMenuItem = msg
+          const name = pgn.fields.text
 
           app.debug(`menu item: ${name}`)
           if (name === 'Discoverable') {
