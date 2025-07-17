@@ -20,9 +20,11 @@
   "author": "scott@scottbender.net",
   "license": "ISC",
   "dependencies": {
+    "@canboat/canboatjs": "^3.5.0",
     "@canboat/ts-pgns": "^1.9.1",
     "debug": "^3.1.0",
     "lodash": "^4.17.4",
+    "semver": "^7.7.2",
     "util": "^0.10.3"
   },
   "repository": {
@@ -33,6 +35,7 @@
   "devDependencies": {
     "@signalk/server-api": "^2.7.1",
     "@tsconfig/node20": "^20.1.6",
+    "@types/semver": "^7.7.0",
     "eslint": "^9.30.1",
     "eslint-config-prettier": "^10.1.5",
     "eslint-plugin-prettier": "^5.5.1",

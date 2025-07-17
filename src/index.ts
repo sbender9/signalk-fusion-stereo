@@ -21,6 +21,8 @@ import path from 'path'
 import os from 'os'
 import util from 'util'
 import { getN2KCommand } from './n2k_commands'
+import { pgnToActisenseSerialFormat } from '@canboat/canboatjs'
+import { satisfies } from 'semver'
 
 const getBTDevices = [
   '%s,7,126720,1,%s,11,a3,99,09,00,0b,00,00,00,00,01,02',
@@ -50,6 +52,9 @@ module.exports = function (app: any) {
   const availableZones: string[] = []
   const availableSources: string[] = []
   let currentSource: string
+  let isNewServer: boolean = satisfies(app.config.version, '>=2.15.0') ||
+    satisfies(app.config.version, '>=2.15.0-beta')
+
 
   const plugin: Plugin = {
     id: 'fusionstereo',
@@ -1078,8 +1083,16 @@ module.exports = function (app: any) {
         app.reportOutputMessages(1)
       } else {
         const converted = convertCamelCase(app, n2k_msg)
-        app.debug('n2k_json: ' + JSON.stringify(converted))
-        app.emit('nmea2000JsonOut', converted)
+        //the pgn defs are wrong in older versions of canboatjs, 
+        // so we need to handle them differently
+        if ( isNewServer ) {
+          app.debug('n2k_json: ' + JSON.stringify(converted))
+          app.emit('nmea2000JsonOut', converted)
+        } else {
+          const n2k_serial = pgnToActisenseSerialFormat(converted)
+          app.debug('n2k_serial: ' + n2k_serial)
+          app.emit('nmea2000out', n2k_serial)
+        }
         app.reportOutputMessages(1)
       }
     }
@@ -1087,79 +1100,3 @@ module.exports = function (app: any) {
 
   return plugin
 }
-
-/*
-function sendCommand(app, deviceid, command_json)
-{
-  var n2k_msg = null
-  var action = command_json["action"]
-  var device = command_json["device"]
-  
-  app.debug("command: %j", command_json)
-
-  var format = fusion_commands[action]
-  if ( action == 'setSource' )
-  {
-    n2k_msg = util.format(format, isoDate(), default_src, deviceid,
-			  sourceidToNum(command_json['value']))
-  }
-  else if ( action == 'setAllVolume' )
-  {
-    volumes = command_json['value']
-
-    zone1 = checkVolume(volumes['zone1'])
-    zone2 = checkVolume(volumes['zone2'])
-    zone3 = checkVolume(volumes['zone3'])
-    zone4 = checkVolume(volumes['zone4'])
-    
-    n2k_msg = util.format(format, isoDate(), default_src, deviceid,
-                          padd(zone1.toString(16)),
-                          padd(zone2.toString(16)),
-                          padd(zone3.toString(16)),
-                          padd(zone4.toString(16)))
-  }
-  else if ( action == 'setVolume' )
-  {
-    n2k_msg = util.format(format, isoDate(), default_src, deviceid,
-                          zoneIdToNum(command_json['zone']),
-                          padd(command_json['value'].toString(16)))
-  }
-  else if ( action == 'next' || action == 'prev' || action == 'play'
-	    || action == 'pause' )
-  {
-    var cur_source_id = app.getSelfPath(
-	  device + ".output.zone1.source.value")
-
-    cur_source_id = cur_source_id.substring((device + '.avsource.').length)
-    var sources = app.getSelfPath(device + ".avsource")
-    app.debug("sources: %j cur_source_id: %s", sources, cur_source_id)
-    if (typeof cur_source_id != "undefined" && typeof sources != "undefined")
-    {
-      var source_name = sources[cur_source_id]["name"]["value"]
-
-      if ( source_name == 'SiriusXM' )
-      {
-	format = fusion_commands["SiriusXM_"+action]
-      }
-
-      if ( format )
-      {
-	n2k_msg = util.format(format,
-			      isoDate(), default_src, deviceid,
-			      sourceidToNum(cur_source_id))
-      }
-    }
-  }
-  else
-  {
-    n2k_msg = util.format(format, isoDate(), default_src, deviceid)
-  }
-
-  if ( n2k_msg )
-  {
-    app.debug("n2k_msg: " + n2k_msg)
-    app.emit('nmea2000out', n2k_msg);
-  }
-}
-
-*/
