@@ -52,9 +52,9 @@ module.exports = function (app: any) {
   const availableZones: string[] = []
   const availableSources: string[] = []
   let currentSource: string
-  let isNewServer: boolean = satisfies(app.config.version, '>=2.15.0') ||
+  const isNewServer: boolean =
+    satisfies(app.config.version, '>=2.15.0') ||
     satisfies(app.config.version, '>=2.15.0-beta')
-
 
   const plugin: Plugin = {
     id: 'fusionstereo',
@@ -684,9 +684,9 @@ module.exports = function (app: any) {
               v[id] &&
               v[id].n2k &&
               ((v[id].n2k.hardwareVersion &&
-              v[id].n2k.hardwareVersion.startsWith('FUSION-LINK')) ||
-              v[id].n2k.modelVersion &&
-              v[id].n2k.modelVersion.startsWith('FUSION-LINK'))
+                v[id].n2k.hardwareVersion.startsWith('FUSION-LINK')) ||
+                (v[id].n2k.modelVersion &&
+                  v[id].n2k.modelVersion.startsWith('FUSION-LINK')))
             ) {
               fusions.push(v[id].n2k)
             }
@@ -710,8 +710,7 @@ module.exports = function (app: any) {
       let id = 0
       let found = false
       const menu_items = (msg: any) => {
-        const fields = msg['fields']
-        if ( PGN_130820_FusionMenuItem.isMatch(msg) ) {
+        if (PGN_130820_FusionMenuItem.isMatch(msg)) {
           const pgn: PGN_130820_FusionMenuItem = msg
           const name = pgn.fields.text
 
@@ -1085,9 +1084,9 @@ module.exports = function (app: any) {
         app.reportOutputMessages(1)
       } else {
         const converted = convertCamelCase(app, n2k_msg)
-        //the pgn defs are wrong in older versions of canboatjs, 
+        //the pgn defs are wrong in older versions of canboatjs,
         // so we need to handle them differently
-        if ( isNewServer ) {
+        if (isNewServer) {
           app.debug('n2k_json: ' + JSON.stringify(converted))
           app.emit('nmea2000JsonOut', converted)
         } else {
