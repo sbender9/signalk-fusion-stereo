@@ -1,6 +1,6 @@
 {
   "name": "signalk-fusion-stereo",
-  "version": "2.0.1",
+  "version": "2.0.2",
   "description": "Plugin that controls a Fusion stereo",
   "main": "dist/index.js",
   "scripts": {
