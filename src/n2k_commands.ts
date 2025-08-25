@@ -39,7 +39,7 @@ const fusion_commands: {
     new PGN_126720_FusionMediaControl(
       {
         command: FusionCommand.Next,
-        sourceId,
+        sourceId
       },
       dst
     ),
@@ -48,7 +48,7 @@ const fusion_commands: {
     new PGN_126720_FusionMediaControl(
       {
         command: FusionCommand.Prev,
-        sourceId,
+        sourceId
       },
       dst
     ),
@@ -57,7 +57,7 @@ const fusion_commands: {
     new PGN_126720_FusionMediaControl(
       {
         command: FusionCommand.Play,
-        sourceId,
+        sourceId
       },
       dst
     ),
@@ -66,7 +66,7 @@ const fusion_commands: {
     new PGN_126720_FusionMediaControl(
       {
         command: FusionCommand.Pause,
-        sourceId,
+        sourceId
       },
       dst
     ),
@@ -75,7 +75,7 @@ const fusion_commands: {
     new PGN_126720_FusionSiriusControl(
       {
         command: FusionSiriusCommand.Next,
-        sourceId,
+        sourceId
       },
       dst
     ),
@@ -84,17 +84,13 @@ const fusion_commands: {
     new PGN_126720_FusionSiriusControl(
       {
         command: FusionSiriusCommand.Prev,
-        sourceId,
+        sourceId
       },
       dst
     ),
   //status: '%s,6,126720,%s,%s,4,a3,99,01,00',
   status: (_sourceId: number, dst: number) =>
-    new PGN_126720_FusionRequestStatus(
-      {
-      },
-      dst
-    ),
+    new PGN_126720_FusionRequestStatus({}, dst),
   //mute: '%s,6,126720,%s,%s,5,a3,99,11,00,01',
   mute: (_sourceId: number, dst: number) =>
     new PGN_126720_FusionSetMute(
@@ -115,7 +111,7 @@ const fusion_commands: {
   setSource: (sourceId: number, dst: number) =>
     new PGN_126720_FusionSetSource(
       {
-        sourceId,
+        sourceId
       },
       dst
     ),
@@ -192,7 +188,7 @@ export function getN2KCommand(
         zone1,
         zone2,
         zone3,
-        zone4,
+        zone4
       },
       deviceid
     )
@@ -200,7 +196,7 @@ export function getN2KCommand(
     n2k_msg = new PGN_126720_FusionSetZoneVolume(
       {
         zone: zoneIdToNum(command_json['zone']),
-        volume: command_json['value'],
+        volume: command_json['value']
       },
       deviceid
     )
