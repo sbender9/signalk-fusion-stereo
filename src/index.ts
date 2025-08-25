@@ -683,8 +683,10 @@ module.exports = function (app: any) {
             if (
               v[id] &&
               v[id].n2k &&
-              v[id].n2k.hardwareVersion &&
-              v[id].n2k.hardwareVersion.startsWith('FUSION-LINK')
+              ((v[id].n2k.hardwareVersion &&
+              v[id].n2k.hardwareVersion.startsWith('FUSION-LINK')) ||
+              v[id].n2k.modelVersion &&
+              v[id].n2k.modelVersion.startsWith('FUSION-LINK'))
             ) {
               fusions.push(v[id].n2k)
             }
