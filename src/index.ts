@@ -699,7 +699,7 @@ module.exports = function (app: any) {
     }
   }
 
-  plugin.registerWithRouter = function (router) {
+  plugin.registerWithRouter = function (router:any) {
     router.post('/command', (req: any, res: any) => {
       sendCommand(deviceid, req.body)
       res.send('Executed command for plugin ' + plugin.id)
