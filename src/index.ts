@@ -35,6 +35,36 @@ const endMenu = '%s,7,126720,1,%s,11,a3,99,09,00,0b,00,00,00,00,04,02'
 const default_device = 'entertainment.device.fusion1'
 const ZONES = ['zone1', 'zone2', 'zone3', 'zone4']
 
+// Descriptions published as meta for the stereo's paths, keyed by the path
+// relative to the device; the NMEA 2000 conversion publishes no meta for them.
+const PATH_DESCRIPTIONS: [RegExp, string][] = [
+  [/^state$/, 'Power state of the stereo: on or off.'],
+  [
+    /^avsource\.[^.]+\.playbackState$/,
+    'Playback state of this audio source: Playing or Paused (a stopped source reports Paused).'
+  ],
+  [
+    /^avsource\.[^.]+\.track\.name$/,
+    'Title of the track playing on this audio source.'
+  ],
+  [
+    /^avsource\.[^.]+\.track\.artistName$/,
+    'Artist of the track playing on this audio source.'
+  ],
+  [
+    /^output\.[^.]+\.name$/,
+    'Name of this output zone of the stereo, such as cockpit or saloon.'
+  ],
+  [
+    /^output\.[^.]+\.isMuted$/,
+    'Whether this output zone of the stereo is muted.'
+  ],
+  [
+    /^output\.[^.]+\.volume\.master$/,
+    "Master volume of this output zone of the stereo, as the stereo's own volume level."
+  ]
+]
+
 module.exports = function (app: any) {
   let unsubscribes: any[] = []
   const last_states = new Map()
@@ -51,6 +81,7 @@ module.exports = function (app: any) {
   let lastBtDevices: any[]
   const availableZones: string[] = []
   const availableSources: string[] = []
+  const metaSent = new Set<string>()
   let currentSource: string
   const isNewServer: boolean =
     satisfies(app.config.version, '>=2.15.0') ||
@@ -63,6 +94,8 @@ module.exports = function (app: any) {
 
     start: (props: any) => {
       plugin_props = props
+      metaSent.clear()
+      sendMetaOnce(`${default_device}.state`)
 
       if (
         (typeof props.autoDiscover !== 'undefined' && props.autoDiscover) ||
@@ -629,11 +662,23 @@ module.exports = function (app: any) {
     app.handleMessage(plugin.id, delta)
   }
 
+  function sendMetaOnce(path: string) {
+    if (metaSent.has(path) || !path.startsWith(`${default_device}.`)) return
+    const relative = path.substring(default_device.length + 1)
+    const entry = PATH_DESCRIPTIONS.find(([pattern]) => pattern.test(relative))
+    if (!entry) return
+    metaSent.add(path)
+    app.handleMessage(plugin.id, {
+      updates: [{ meta: [{ path, value: { description: entry[1] } }] }]
+    })
+  }
+
   function handleDelta(delta: any) {
     delta.updates.forEach((update: any) => {
       if (!update.values) return
 
       update.values.forEach((pv: any) => {
+        sendMetaOnce(pv.path)
         if (pv.path === `${default_device}.output.zone1.source`) {
           currentSource = pv.value
           sendDelta(
